@@ -113,6 +113,7 @@ PostgreSQL (via compose do `infra/`), populando o banco com dados padrão:
 | `output_formats` | Markdown, JSON, HTML, PDF |
 | `history` | 5 análises de exemplo |
 | `config` | Configuração inicial (modo `PARALELO`, markdown, 3 skills habilitadas) |
+| `workflow_agents` | orquestrador, Análise de Arquitetura, Code Smell, Análise de Desempenho, Análise de Segurança |
 
 Para resetar o banco e recomeçar do zero (a partir de `infra/`):
 
@@ -146,6 +147,11 @@ docker compose up -d postgres
 | `POST` | `/api/history` | Criar item no histórico |
 | `PUT` | `/api/history/{id}` | Atualizar item |
 | `DELETE` | `/api/history/{id}` | Remover item |
+| `GET` | `/api/workflow-agents` | Listar agents |
+| `GET` | `/api/workflow-agents/{id}` | Buscar agent |
+| `POST` | `/api/workflow-agents` | Criar agent |
+| `PUT` | `/api/workflow-agents/{id}` | Atualizar agent |
+| `DELETE` | `/api/workflow-agents/{id}` | Remover agent |
 | `GET` | `/api/config` | Obter configuração |
 | `PUT` | `/api/config` | Atualizar configuração |
 
@@ -167,10 +173,10 @@ ruff format --check .
 | Diretório | Finalidade |
 |-----------|------------|
 | `app/main.py` | Criação da aplicação FastAPI + criação automática das tabelas |
-| `app/api/` | Rotas por entidade (`integration_routes`, `skill_routes`, `output_format_routes`, `history_routes`, `config_routes`) |
+| `app/api/` | Rotas por entidade (`integration_routes`, `skill_routes`, `output_format_routes`, `history_routes`, `config_routes`, `workflow_agent_routes`) |
 | `app/core/` | Configuração via pydantic-settings (`settings.py`) |
 | `app/db/` | Engine, sessão SQLAlchemy e dependência `get_db` |
-| `app/models/` | Modelos ORM (`Integration`, `Skill`, `OutputFormat`, `History`, `Config`) |
+| `app/models/` | Modelos ORM (`Integration`, `Skill`, `OutputFormat`, `History`, `Config`, `WorkflowAgent`) |
 | `app/schemas/` | Schemas Pydantic de request/response |
 | `app/services/` | Lógica de negócio (CRUD com DB) |
 | `tests/` | Testes com pytest + httpx ASGITransport |
