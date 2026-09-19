@@ -139,15 +139,39 @@ padrão (`Dockerfile`) de cada uma.
 
 A URL fica em `backend/app/core/settings.py` — configuração via **env**, sem valores cravados.
 
+## IDs (hashes determinísticos)
+
+Todas as tabelas usam `id TEXT PRIMARY KEY`, gerado automaticamente a partir de uma sequence
+por tabela e hasheado com `md5`:
+
+```sql
+CREATE SEQUENCE <tabela>_id_seq;
+CREATE TABLE <tabela> (
+    id TEXT PRIMARY KEY DEFAULT md5(nextval('<tabela>_id_seq')::text),
+    ...
+);
+```
+
+- Se o `id` for **omitido** no `INSERT`, o Postgres deriva um hash do próximo valor da sequence
+  (ex.: `md5('1')`). Como cada tabela tem sua própria sequence, os hashes não colidem.
+- O hash é **previsível** (não é aleatório) — serve como identificador único curto, **não** como
+  mecanismo de segurança/anti-enumeração.
+- Os seeds de `skills`, `output_formats` e `config` usam hashes determinísticos explícitos
+  (`md5('skill:seguranca')`, `md5('output_format:markdown')`, `md5('config:default')`) para que
+  `config.skill_ids` e `config.output_format_id` referenciem os ids corretos já no seed.
+- `config.skill_ids` guarda um array JSON com os **ids** das skills (não mais slugs/nomes).
+
+> O `backend` e o `frontend` precisam tratar esses ids como `string` (antes eram `int`).
+
 ## Workflow de Agentes
 
 A tabela `workflow_agents` define a ordem de execução dos agentes de análise via auto-relacionamento:
 
 | Coluna | Tipo | Descrição |
 |--------|------|-----------|
-| `id` | `SERIAL PK` | Identificador único |
+| `id` | `TEXT PK` | Identificador único (`md5` da sequence) |
 | `nome` | `VARCHAR(255)` | Nome do agente |
-| `depende_de` | `INTEGER FK → workflow_agents(id)` | Agente pai (define ordem de execução) |
+| `depende_de` | `TEXT FK → workflow_agents(id)` | Agente pai (define ordem de execução) |
 
 Seed padrão (`scripts/init.sql`):
 
@@ -167,7 +191,7 @@ Para consultar a cadeia:
 SELECT a.id, a.nome AS agente, b.nome AS depende_de
 FROM workflow_agents a
 LEFT JOIN workflow_agents b ON a.depende_de = b.id
-ORDER BY a.id;
+ORDER BY a.created_at;
 ```
 
 ## Configuração (`infra/.env`)

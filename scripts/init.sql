@@ -1,5 +1,12 @@
+CREATE SEQUENCE IF NOT EXISTS integrations_id_seq;
+CREATE SEQUENCE IF NOT EXISTS skills_id_seq;
+CREATE SEQUENCE IF NOT EXISTS output_formats_id_seq;
+CREATE SEQUENCE IF NOT EXISTS history_id_seq;
+CREATE SEQUENCE IF NOT EXISTS config_id_seq;
+CREATE SEQUENCE IF NOT EXISTS workflow_agents_id_seq;
+
 CREATE TABLE IF NOT EXISTS integrations (
-    id SERIAL PRIMARY KEY,
+    id TEXT PRIMARY KEY DEFAULT md5(nextval('integrations_id_seq')::text),
     name VARCHAR(255) NOT NULL,
     icon VARCHAR(50) NOT NULL,
     "desc" TEXT NOT NULL,
@@ -130,7 +137,7 @@ $yaml$
 ON CONFLICT DO NOTHING;
 
 CREATE TABLE IF NOT EXISTS skills (
-    id VARCHAR(50) PRIMARY KEY,
+    id TEXT PRIMARY KEY DEFAULT md5(nextval('skills_id_seq')::text),
     name VARCHAR(255) NOT NULL,
     icon VARCHAR(50) NOT NULL,
     "desc" TEXT NOT NULL,
@@ -140,7 +147,7 @@ CREATE TABLE IF NOT EXISTS skills (
 
 INSERT INTO skills (id, name, icon, "desc", enabled, prompt) VALUES
 (
-    'seguranca',
+    md5('skill:seguranca'),
     'Análise de Segurança',
     'bi-shield-check',
     'Identifica vulnerabilidades como SQL injection, XSS, exposição de secrets e más práticas de autenticação.',
@@ -148,7 +155,7 @@ INSERT INTO skills (id, name, icon, "desc", enabled, prompt) VALUES
     $prompt$Revise o código em busca de vulnerabilidades de segurança conhecidas (OWASP Top 10).$prompt$
 ),
 (
-    'arquitetura',
+    md5('skill:arquitetura'),
     'Análise de Arquitetura',
     'bi-layers',
     'Avalia separação de concerns, acoplamento, coesão e conformidade com padrões de projeto.',
@@ -156,7 +163,7 @@ INSERT INTO skills (id, name, icon, "desc", enabled, prompt) VALUES
     $prompt$Analise a arquitetura do projeto: padrões utilizados, acoplamento entre módulos e aderência a boas práticas.$prompt$
 ),
 (
-    'codesmell',
+    md5('skill:codesmell'),
     'Code Smell',
     'bi-exclamation-triangle',
     'Detecta código duplicado, métodos muito longos, complexidade ciclomática elevada e más práticas.',
@@ -164,7 +171,7 @@ INSERT INTO skills (id, name, icon, "desc", enabled, prompt) VALUES
     $prompt$Identifique code smells: duplicação, métodos longos, complexidade elevada e más práticas de codificação.$prompt$
 ),
 (
-    'desempenho',
+    md5('skill:desempenho'),
     'Análise de Desempenho',
     'bi-speedometer2',
     'Aponta gargalos de performance, queries N+1, falta de cache e uso ineficiente de recursos.',
@@ -172,30 +179,30 @@ INSERT INTO skills (id, name, icon, "desc", enabled, prompt) VALUES
     $prompt$Analise o código em busca de gargalos de performance: queries lentas, falta de cache e uso ineficiente de recursos.$prompt$
 ),
 (
-    'dependencias',
+    md5('skill:dependencias'),
     'Dependências',
     'bi-box-seam',
     'Verifica versões de dependências, vulnerabilidades conhecidas em pacotes e licenças.',
     false,
     $prompt$Analise as dependências do projeto: versões desatualizadas, vulnerabilidades conhecidas e licenças.$prompt$
 )
-ON CONFLICT DO NOTHING;
+ON CONFLICT (id) DO NOTHING;
 
 CREATE TABLE IF NOT EXISTS output_formats (
-    id SERIAL PRIMARY KEY,
+    id TEXT PRIMARY KEY DEFAULT md5(nextval('output_formats_id_seq')::text),
     value VARCHAR(50) NOT NULL UNIQUE,
     label VARCHAR(100) NOT NULL
 );
 
-INSERT INTO output_formats (value, label) VALUES
-    ('markdown', 'Markdown'),
-    ('json', 'JSON'),
-    ('html', 'HTML'),
-    ('pdf', 'PDF')
+INSERT INTO output_formats (id, value, label) VALUES
+    (md5('output_format:markdown'), 'markdown', 'Markdown'),
+    (md5('output_format:json'), 'json', 'JSON'),
+    (md5('output_format:html'), 'html', 'HTML'),
+    (md5('output_format:pdf'), 'pdf', 'PDF')
 ON CONFLICT (value) DO NOTHING;
 
 CREATE TABLE IF NOT EXISTS history (
-    id SERIAL PRIMARY KEY,
+    id TEXT PRIMARY KEY DEFAULT md5(nextval('history_id_seq')::text),
     repo VARCHAR(500) NOT NULL,
     date TIMESTAMPTZ NOT NULL,
     issues INTEGER NOT NULL DEFAULT 0,
@@ -214,20 +221,25 @@ INSERT INTO history (repo, date, issues, severity, agents, time) VALUES
 ON CONFLICT DO NOTHING;
 
 CREATE TABLE IF NOT EXISTS config (
-    id INTEGER PRIMARY KEY DEFAULT 1,
+    id TEXT PRIMARY KEY DEFAULT md5(nextval('config_id_seq')::text),
     execution_mode VARCHAR(20) NOT NULL DEFAULT 'PARALELO',
-    output_format_id INTEGER NOT NULL,
+    output_format_id TEXT NOT NULL,
     skill_ids TEXT NOT NULL
 );
 
 INSERT INTO config (id, execution_mode, output_format_id, skill_ids)
-VALUES (1, 'PARALELO', 1, '["seguranca","arquitetura","codesmell"]')
+VALUES (
+    md5('config:default'),
+    'PARALELO',
+    md5('output_format:markdown'),
+    '["' || md5('skill:seguranca') || '","' || md5('skill:arquitetura') || '","' || md5('skill:codesmell') || '"]'
+)
 ON CONFLICT (id) DO NOTHING;
 
 CREATE TABLE IF NOT EXISTS workflow_agents (
-    id SERIAL PRIMARY KEY,
+    id TEXT PRIMARY KEY DEFAULT md5(nextval('workflow_agents_id_seq')::text),
     nome VARCHAR(255) NOT NULL,
-    depende_de INTEGER REFERENCES workflow_agents(id) ON DELETE SET NULL,
+    depende_de TEXT REFERENCES workflow_agents(id) ON DELETE SET NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
