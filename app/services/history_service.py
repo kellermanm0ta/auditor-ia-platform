@@ -19,10 +19,10 @@ class HistoryService:
     def list_all(self) -> list[History]:
         return list(self.db.scalars(select(History).order_by(History.id)).all())
 
-    def get(self, history_id: int) -> History | None:
+    def get(self, history_id: str) -> History | None:
         return self.db.get(History, history_id)
 
-    def update(self, history_id: int, data: HistoryUpdate) -> History | None:
+    def update(self, history_id: str, data: HistoryUpdate) -> History | None:
         obj = self.db.get(History, history_id)
         if not obj:
             return None
@@ -33,7 +33,7 @@ class HistoryService:
         self.db.refresh(obj)
         return obj
 
-    def delete(self, history_id: int) -> bool:
+    def delete(self, history_id: str) -> bool:
         obj = self.db.get(History, history_id)
         if not obj:
             return False

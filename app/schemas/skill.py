@@ -5,7 +5,6 @@ from pydantic.alias_generators import to_camel
 class SkillBase(BaseModel):
     model_config = {"alias_generator": to_camel, "populate_by_name": True}
 
-    id: str
     name: str
     icon: str
     desc: str
@@ -28,4 +27,6 @@ class SkillUpdate(BaseModel):
 
 
 class SkillResponse(SkillBase):
+    id: str
+
     model_config = {"alias_generator": to_camel, "populate_by_name": True, "from_attributes": True}

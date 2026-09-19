@@ -8,7 +8,7 @@ class WorkflowAgentBase(BaseModel):
     model_config = {"alias_generator": to_camel, "populate_by_name": True}
 
     nome: str
-    depende_de: int | None = None
+    depende_de: str | None = None
 
 
 class WorkflowAgentCreate(WorkflowAgentBase):
@@ -19,11 +19,11 @@ class WorkflowAgentUpdate(BaseModel):
     model_config = {"alias_generator": to_camel, "populate_by_name": True}
 
     nome: str | None = None
-    depende_de: int | None = None
+    depende_de: str | None = None
 
 
 class WorkflowAgentResponse(WorkflowAgentBase):
-    id: int
+    id: str
     created_at: datetime
     updated_at: datetime
 

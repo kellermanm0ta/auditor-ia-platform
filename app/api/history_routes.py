@@ -15,7 +15,7 @@ async def list_history(db: Session = Depends(get_db)):
 
 
 @router.get("/{history_id}", response_model=HistoryResponse)
-async def get_history(history_id: int, db: Session = Depends(get_db)):
+async def get_history(history_id: str, db: Session = Depends(get_db)):
     service = HistoryService(db)
     entry = service.get(history_id)
     if not entry:
@@ -30,7 +30,7 @@ async def create_history(data: HistoryCreate, db: Session = Depends(get_db)):
 
 
 @router.put("/{history_id}", response_model=HistoryResponse)
-async def update_history(history_id: int, data: HistoryUpdate, db: Session = Depends(get_db)):
+async def update_history(history_id: str, data: HistoryUpdate, db: Session = Depends(get_db)):
     service = HistoryService(db)
     entry = service.update(history_id, data)
     if not entry:
@@ -39,7 +39,7 @@ async def update_history(history_id: int, data: HistoryUpdate, db: Session = Dep
 
 
 @router.delete("/{history_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_history(history_id: int, db: Session = Depends(get_db)):
+async def delete_history(history_id: str, db: Session = Depends(get_db)):
     service = HistoryService(db)
     deleted = service.delete(history_id)
     if not deleted:

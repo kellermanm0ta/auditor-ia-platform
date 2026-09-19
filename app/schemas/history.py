@@ -31,7 +31,7 @@ class HistoryUpdate(BaseModel):
 
 
 class HistoryResponse(HistoryBase):
-    id: int
+    id: str
     created_at: datetime
 
     model_config = {"alias_generator": to_camel, "populate_by_name": True, "from_attributes": True}

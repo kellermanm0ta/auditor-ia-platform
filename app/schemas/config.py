@@ -11,7 +11,7 @@ class ConfigBase(BaseModel):
     model_config = {"alias_generator": to_camel, "populate_by_name": True}
 
     execution_mode: ExecutionMode = "PARALELO"
-    output_format_id: int
+    output_format_id: str
     skill_ids: list[str]
 
 
@@ -19,12 +19,12 @@ class ConfigUpdate(BaseModel):
     model_config = {"alias_generator": to_camel, "populate_by_name": True}
 
     execution_mode: ExecutionMode | None = None
-    output_format_id: int | None = None
+    output_format_id: str | None = None
     skill_ids: list[str] | None = None
 
 
 class ConfigResponse(ConfigBase):
-    id: int
+    id: str
 
     model_config = {"alias_generator": to_camel, "populate_by_name": True, "from_attributes": True}
 

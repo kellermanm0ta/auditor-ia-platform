@@ -23,10 +23,10 @@ class IntegrationService:
     def list_all(self) -> list[Integration]:
         return list(self.db.scalars(select(Integration).order_by(Integration.id)).all())
 
-    def get(self, integration_id: int) -> Integration | None:
+    def get(self, integration_id: str) -> Integration | None:
         return self.db.get(Integration, integration_id)
 
-    def update(self, integration_id: int, data: IntegrationUpdate) -> Integration | None:
+    def update(self, integration_id: str, data: IntegrationUpdate) -> Integration | None:
         obj = self.db.get(Integration, integration_id)
         if not obj:
             return None
@@ -39,7 +39,7 @@ class IntegrationService:
         self.db.refresh(obj)
         return obj
 
-    def delete(self, integration_id: int) -> bool:
+    def delete(self, integration_id: str) -> bool:
         obj = self.db.get(Integration, integration_id)
         if not obj:
             return False

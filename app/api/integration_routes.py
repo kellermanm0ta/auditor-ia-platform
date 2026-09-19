@@ -15,7 +15,7 @@ async def list_integrations(db: Session = Depends(get_db)):
 
 
 @router.get("/{integration_id}", response_model=IntegrationResponse)
-async def get_integration(integration_id: int, db: Session = Depends(get_db)):
+async def get_integration(integration_id: str, db: Session = Depends(get_db)):
     service = IntegrationService(db)
     integration = service.get(integration_id)
     if not integration:
@@ -31,7 +31,7 @@ async def create_integration(data: IntegrationCreate, db: Session = Depends(get_
 
 @router.put("/{integration_id}", response_model=IntegrationResponse)
 async def update_integration(
-    integration_id: int, data: IntegrationUpdate, db: Session = Depends(get_db)
+    integration_id: str, data: IntegrationUpdate, db: Session = Depends(get_db)
 ):
     service = IntegrationService(db)
     integration = service.update(integration_id, data)
@@ -41,7 +41,7 @@ async def update_integration(
 
 
 @router.delete("/{integration_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_integration(integration_id: int, db: Session = Depends(get_db)):
+async def delete_integration(integration_id: str, db: Session = Depends(get_db)):
     service = IntegrationService(db)
     deleted = service.delete(integration_id)
     if not deleted:

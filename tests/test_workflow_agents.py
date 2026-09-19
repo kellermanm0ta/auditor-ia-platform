@@ -19,11 +19,16 @@ async def test_create_workflow_agent():
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as client:
         response = await client.post("/api/workflow-agents", json=SAMPLE)
-    assert response.status_code == 201
-    data = response.json()
-    assert data["nome"] == SAMPLE["nome"]
-    assert data["dependeDe"] is None
-    assert data["id"] is not None
+        agent_id = response.json().get("id")
+        try:
+            assert response.status_code == 201
+            data = response.json()
+            assert data["nome"] == SAMPLE["nome"]
+            assert data["dependeDe"] is None
+            assert data["id"] is not None
+        finally:
+            if agent_id:
+                await client.delete(f"/api/workflow-agents/{agent_id}")
 
 
 @pytest.mark.asyncio
@@ -39,7 +44,7 @@ async def test_list_workflow_agents():
 async def test_get_workflow_agent_not_found():
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as client:
-        response = await client.get("/api/workflow-agents/9999")
+        response = await client.get("/api/workflow-agents/nao-existe")
     assert response.status_code == 404
 
 
@@ -49,14 +54,16 @@ async def test_update_workflow_agent():
     async with AsyncClient(transport=transport, base_url="http://test") as client:
         created = await client.post("/api/workflow-agents", json=SAMPLE)
         agent_id = created.json()["id"]
-
-        response = await client.put(
-            f"/api/workflow-agents/{agent_id}",
-            json={"nome": "orquestrador v2"},
-        )
-    assert response.status_code == 200
-    data = response.json()
-    assert data["nome"] == "orquestrador v2"
+        try:
+            response = await client.put(
+                f"/api/workflow-agents/{agent_id}",
+                json={"nome": "orquestrador v2"},
+            )
+            assert response.status_code == 200
+            data = response.json()
+            assert data["nome"] == "orquestrador v2"
+        finally:
+            await client.delete(f"/api/workflow-agents/{agent_id}")
 
 
 @pytest.mark.asyncio
@@ -65,12 +72,14 @@ async def test_delete_workflow_agent():
     async with AsyncClient(transport=transport, base_url="http://test") as client:
         created = await client.post("/api/workflow-agents", json=SAMPLE)
         agent_id = created.json()["id"]
+        try:
+            response = await client.delete(f"/api/workflow-agents/{agent_id}")
+            assert response.status_code == 204
 
-        response = await client.delete(f"/api/workflow-agents/{agent_id}")
-        assert response.status_code == 204
-
-        get_response = await client.get(f"/api/workflow-agents/{agent_id}")
-        assert get_response.status_code == 404
+            get_response = await client.get(f"/api/workflow-agents/{agent_id}")
+            assert get_response.status_code == 404
+        finally:
+            await client.delete(f"/api/workflow-agents/{agent_id}")
 
 
 @pytest.mark.asyncio
@@ -79,10 +88,17 @@ async def test_create_with_parent():
     async with AsyncClient(transport=transport, base_url="http://test") as client:
         parent = await client.post("/api/workflow-agents", json=SAMPLE)
         parent_id = parent.json()["id"]
+        child_id = None
+        try:
+            child_data = SAMPLE_CHILD.copy()
+            child_data["dependeDe"] = parent_id
+            response = await client.post("/api/workflow-agents", json=child_data)
+            child_id = response.json().get("id")
 
-        child_data = SAMPLE_CHILD.copy()
-        child_data["dependeDe"] = parent_id
-        response = await client.post("/api/workflow-agents", json=child_data)
-    assert response.status_code == 201
-    data = response.json()
-    assert data["dependeDe"] == parent_id
+            assert response.status_code == 201
+            data = response.json()
+            assert data["dependeDe"] == parent_id
+        finally:
+            if child_id:
+                await client.delete(f"/api/workflow-agents/{child_id}")
+            await client.delete(f"/api/workflow-agents/{parent_id}")

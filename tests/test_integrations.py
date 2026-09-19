@@ -20,12 +20,17 @@ async def test_create_integration():
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as client:
         response = await client.post("/api/integrations", json=SAMPLE)
-    assert response.status_code == 201
-    data = response.json()
-    assert data["name"] == SAMPLE["name"]
-    assert data["steps"] == SAMPLE["steps"]
-    assert data["id"] is not None
-    assert data["statusLabel"] == SAMPLE["statusLabel"]
+        integration_id = response.json().get("id")
+        try:
+            assert response.status_code == 201
+            data = response.json()
+            assert data["name"] == SAMPLE["name"]
+            assert data["steps"] == SAMPLE["steps"]
+            assert data["id"] is not None
+            assert data["statusLabel"] == SAMPLE["statusLabel"]
+        finally:
+            if integration_id:
+                await client.delete(f"/api/integrations/{integration_id}")
 
 
 @pytest.mark.asyncio
@@ -41,7 +46,7 @@ async def test_list_integrations():
 async def test_get_integration_not_found():
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as client:
-        response = await client.get("/api/integrations/9999")
+        response = await client.get("/api/integrations/nao-existe")
     assert response.status_code == 404
 
 
@@ -51,17 +56,19 @@ async def test_update_integration():
     async with AsyncClient(transport=transport, base_url="http://test") as client:
         created = await client.post("/api/integrations", json=SAMPLE)
         integration_id = created.json()["id"]
-
-        response = await client.put(
-            f"/api/integrations/{integration_id}",
-            json={
-                "name": "Azure Monitor",
-                "status": "connected",
-            },
-        )
-    assert response.status_code == 200
-    data = response.json()
-    assert data["name"] == "Azure Monitor"
+        try:
+            response = await client.put(
+                f"/api/integrations/{integration_id}",
+                json={
+                    "name": "Azure Monitor",
+                    "status": "connected",
+                },
+            )
+            assert response.status_code == 200
+            data = response.json()
+            assert data["name"] == "Azure Monitor"
+        finally:
+            await client.delete(f"/api/integrations/{integration_id}")
 
 
 @pytest.mark.asyncio
@@ -70,9 +77,11 @@ async def test_delete_integration():
     async with AsyncClient(transport=transport, base_url="http://test") as client:
         created = await client.post("/api/integrations", json=SAMPLE)
         integration_id = created.json()["id"]
+        try:
+            response = await client.delete(f"/api/integrations/{integration_id}")
+            assert response.status_code == 204
 
-        response = await client.delete(f"/api/integrations/{integration_id}")
-        assert response.status_code == 204
-
-        get_response = await client.get(f"/api/integrations/{integration_id}")
-        assert get_response.status_code == 404
+            get_response = await client.get(f"/api/integrations/{integration_id}")
+            assert get_response.status_code == 404
+        finally:
+            await client.delete(f"/api/integrations/{integration_id}")

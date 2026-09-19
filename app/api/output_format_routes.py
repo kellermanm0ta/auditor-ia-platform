@@ -15,7 +15,7 @@ async def list_output_formats(db: Session = Depends(get_db)):
 
 
 @router.get("/{format_id}", response_model=OutputFormatResponse)
-async def get_output_format(format_id: int, db: Session = Depends(get_db)):
+async def get_output_format(format_id: str, db: Session = Depends(get_db)):
     service = OutputFormatService(db)
     fmt = service.get(format_id)
     if not fmt:
@@ -31,7 +31,7 @@ async def create_output_format(data: OutputFormatCreate, db: Session = Depends(g
 
 @router.put("/{format_id}", response_model=OutputFormatResponse)
 async def update_output_format(
-    format_id: int, data: OutputFormatUpdate, db: Session = Depends(get_db)
+    format_id: str, data: OutputFormatUpdate, db: Session = Depends(get_db)
 ):
     service = OutputFormatService(db)
     fmt = service.update(format_id, data)
@@ -41,7 +41,7 @@ async def update_output_format(
 
 
 @router.delete("/{format_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_output_format(format_id: int, db: Session = Depends(get_db)):
+async def delete_output_format(format_id: str, db: Session = Depends(get_db)):
     service = OutputFormatService(db)
     deleted = service.delete(format_id)
     if not deleted:

@@ -36,7 +36,7 @@ class IntegrationUpdate(BaseModel):
 
 
 class IntegrationResponse(IntegrationBase):
-    id: int
+    id: str
     created_at: datetime
     updated_at: datetime
 

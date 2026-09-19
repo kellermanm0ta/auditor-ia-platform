@@ -20,10 +20,10 @@ class WorkflowAgentService:
     def list_all(self) -> list[WorkflowAgent]:
         return list(self.db.scalars(select(WorkflowAgent).order_by(WorkflowAgent.id)).all())
 
-    def get(self, workflow_agent_id: int) -> WorkflowAgent | None:
+    def get(self, workflow_agent_id: str) -> WorkflowAgent | None:
         return self.db.get(WorkflowAgent, workflow_agent_id)
 
-    def update(self, workflow_agent_id: int, data: WorkflowAgentUpdate) -> WorkflowAgent | None:
+    def update(self, workflow_agent_id: str, data: WorkflowAgentUpdate) -> WorkflowAgent | None:
         obj = self.db.get(WorkflowAgent, workflow_agent_id)
         if not obj:
             return None
@@ -34,7 +34,7 @@ class WorkflowAgentService:
         self.db.refresh(obj)
         return obj
 
-    def delete(self, workflow_agent_id: int) -> bool:
+    def delete(self, workflow_agent_id: str) -> bool:
         obj = self.db.get(WorkflowAgent, workflow_agent_id)
         if not obj:
             return False

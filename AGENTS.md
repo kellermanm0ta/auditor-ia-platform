@@ -39,7 +39,7 @@ app/
   db/session.py    — SQLAlchemy engine + session factory + get_db dependency
   models/          — ORM models (Integration with steps stored as JSON string)
   schemas/         — Pydantic request/response schemas
-  services/        — business logic (integration_service uses DB; item_service is in-memory stub)
+  services/        — business logic (DB-backed, one service per resource)
   api/routes.py             — aggregates all sub-routers
   api/integration_routes.py — /api/integrations CRUD
   api/skill_routes.py       — /api/skills CRUD

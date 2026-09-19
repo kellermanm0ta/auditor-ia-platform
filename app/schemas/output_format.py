@@ -21,6 +21,6 @@ class OutputFormatUpdate(BaseModel):
 
 
 class OutputFormatResponse(OutputFormatBase):
-    id: int
+    id: str
 
     model_config = {"alias_generator": to_camel, "populate_by_name": True, "from_attributes": True}

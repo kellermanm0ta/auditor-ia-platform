@@ -100,6 +100,10 @@ uvicorn app.main:app --reload
 Acesse `http://localhost:8000/docs` para a documentação interativa (Swagger).
 
 > **Payload**: todos os endpoints da API aceitam e retornam **camelCase** (ex: `statusLabel`, `docUrl`, `createdAt`).
+>
+> **IDs**: todas as tabelas usam `id` do tipo `TEXT` gerado automaticamente pelo banco (hash `md5`).
+> O `id` é devolvido nas respostas, mas deve ser **omitido no body de criação** — o banco gera o valor.
+> Nas rotas, `{id}` é sempre uma string (ex.: `POST /api/skills` não aceita `id`; o `id` retornado é o hash).
 
 ## Seed automático
 
@@ -114,6 +118,8 @@ PostgreSQL (via compose do `infra/`), populando o banco com dados padrão:
 | `history` | 5 análises de exemplo |
 | `config` | Configuração inicial (modo `PARALELO`, markdown, 3 skills habilitadas) |
 | `workflow_agents` | orquestrador, Análise de Arquitetura, Code Smell, Análise de Desempenho, Análise de Segurança |
+
+Os `id` de todos os registros seedados também são gerados por hash (`TEXT`).
 
 Para resetar o banco e recomeçar do zero (a partir de `infra/`):
 
@@ -161,6 +167,9 @@ docker compose up -d postgres
 pytest
 ```
 
+> Os testes rodam contra o PostgreSQL configurado no `.env` e **excluem todos os registros que criam**,
+> mantendo apenas os dados já existentes/seedados no banco.
+
 ## Lint e formatação
 
 ```bash
@@ -181,5 +190,5 @@ ruff format --check .
 | `app/services/` | Lógica de negócio (CRUD com DB) |
 | `tests/` | Testes com pytest + httpx ASGITransport |
 
-> Nota: `/api/config` é um singleton (sempre `id=1`). As tabelas são criadas automaticamente na inicialização da aplicação via `Base.metadata.create_all` (fallback quando roda sem Docker).
+> Nota: `/api/config` é um singleton (um único registro, buscado sem depender de um `id` fixo). As tabelas são criadas automaticamente na inicialização da aplicação via `Base.metadata.create_all` (fallback quando roda sem Docker).
 > O script de seed (`init.sql`) e o docker-compose do banco ficam em `infra/`.

@@ -1,8 +1,11 @@
 import json
 
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models.config import Config, ExecutionMode
+from app.models.output_format import OutputFormat
+from app.models.skill import Skill
 from app.schemas.config import ConfigUpdate
 
 
@@ -11,16 +14,17 @@ class ConfigService:
         self.db = db
 
     def get(self) -> Config | None:
-        return self.db.get(Config, 1)
+        return self.db.scalars(select(Config)).first()
 
     def get_or_create_default(self) -> Config:
-        config = self.db.get(Config, 1)
+        config = self.get()
         if not config:
+            output_format = self.db.scalars(select(OutputFormat)).first()
+            skills = self.db.scalars(select(Skill)).all()
             config = Config(
-                id=1,
                 execution_mode=ExecutionMode.PARALELO.value,
-                output_format_id=1,
-                skill_ids=json.dumps(["seguranca", "arquitetura", "codesmell"]),
+                output_format_id=output_format.id if output_format else "",
+                skill_ids=json.dumps([skill.id for skill in skills]),
             )
             self.db.add(config)
             self.db.commit()
@@ -28,7 +32,7 @@ class ConfigService:
         return config
 
     def update(self, data: ConfigUpdate) -> Config | None:
-        config = self.db.get(Config, 1)
+        config = self.get()
         if not config:
             return None
         vals = data.model_dump(exclude_unset=True, by_alias=False)

@@ -19,10 +19,10 @@ class OutputFormatService:
     def list_all(self) -> list[OutputFormat]:
         return list(self.db.scalars(select(OutputFormat).order_by(OutputFormat.id)).all())
 
-    def get(self, format_id: int) -> OutputFormat | None:
+    def get(self, format_id: str) -> OutputFormat | None:
         return self.db.get(OutputFormat, format_id)
 
-    def update(self, format_id: int, data: OutputFormatUpdate) -> OutputFormat | None:
+    def update(self, format_id: str, data: OutputFormatUpdate) -> OutputFormat | None:
         obj = self.db.get(OutputFormat, format_id)
         if not obj:
             return None
@@ -33,7 +33,7 @@ class OutputFormatService:
         self.db.refresh(obj)
         return obj
 
-    def delete(self, format_id: int) -> bool:
+    def delete(self, format_id: str) -> bool:
         obj = self.db.get(OutputFormat, format_id)
         if not obj:
             return False
