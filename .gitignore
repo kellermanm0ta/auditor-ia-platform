@@ -1,0 +1,31 @@
+# Python / backend
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+
+# Node / frontend
+node_modules/
+.next/
+out/
+build/
+*.tsbuildinfo
+next-env.d.ts
+
+# Ambiente / segredos (mantenha os .env.example)
+.env
+.env.*
+!.env.example
+
+# opencode
+.opencode/node_modules/
+
+# Editor / SO
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.log
