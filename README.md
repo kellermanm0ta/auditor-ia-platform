@@ -4,22 +4,22 @@ API backend do AuditorIA, um sistema de auditoria inteligente.
 
 ## Repositório de infraestrutura dependida
 
-O banco de dados (PostgreSQL) é orquestrado pelo repositório de infraestrutura do AuditorIA:
+O PostgreSQL e o Keycloak são orquestrados pelo repositório de infraestrutura do AuditorIA:
 
 ```
 git@github.com:kellermanm0ta/auditoria-infra.git
 ```
 
-Para subir o banco em desenvolvimento, clone a infra num diretório irmão e rode:
+Para subir o banco e o Keycloak em desenvolvimento, clone a infra num diretório irmão e rode:
 
 ```bash
 cd auditoria-infra
-docker compose up -d postgres
+docker compose up -d postgres keycloak
 ```
 
 ## Pré-requisitos
 
-- **Docker** 24+ e **Docker Compose** v2.23+ (apenas para o banco de dados)
+- **Docker** 24+ e **Docker Compose** v2.23+ (apenas para banco + Keycloak)
 - **Python** 3.11+ (apenas para desenvolvimento fora do container)
 
 ## Setup com Docker (recomendado)
@@ -30,10 +30,10 @@ O banco é orquestrado pelo `infra/` (anti-guias de infra do repositório), não
 # 1. Configure as variáveis de ambiente
 cp .env.example .env
 
-# 2. Sobe somente o PostgreSQL (a partir de infra/)
+# 2. Sobe PostgreSQL + Keycloak (a partir de infra/)
 cd ../infra
 cp .env.example .env       # primeira vez
-docker compose up -d postgres
+docker compose up -d postgres keycloak
 
 # 3. Instale as dependências Python (volte para backend/)
 cd ../backend
@@ -54,10 +54,11 @@ pip install -e ".[dev]"
 uvicorn app.main:app --reload
 ```
 
-> O docker-compose do banco fica em `infra/docker-compose.yml` e lê o `infra/.env`.
+> O docker-compose do banco e do Keycloak fica em `infra/docker-compose.yml` e lê o `infra/.env`.
 > O `backend/.env` segue sendo o usado pelo `uvicorn` local: credenciais (`POSTGRES_USER`,
 > `POSTGRES_PASSWORD`, `POSTGRES_DB`, `POSTGRES_HOST=localhost`, `POSTGRES_PORT=5432`) devem
-> coincidir com as do banco.
+> coincidir com as do banco, e `KEYCLOAK_ISSUER`/`KEYCLOAK_JWKS_URL` devem apontar para o
+> Keycloak em `http://localhost:8080`.
 
 ### Docker Compose — versões compatíveis
 
@@ -81,8 +82,8 @@ docker compose version # Docker Compose version v2.23.x
 ```bash
 cp .env.example .env
 
-# Certifique-se de ter um PostgreSQL rodando em localhost:5432
-# As credenciais devem bater com as do .env
+# Certifique-se de ter um PostgreSQL em localhost:5432 e um Keycloak em localhost:8080
+# (as credenciais de banco e as URLs do Keycloak devem bater com as do .env)
 
 python -m venv .venv
 source .venv/bin/activate   # Windows: .venv\Scripts\activate
@@ -93,11 +94,15 @@ uvicorn app.main:app --reload
 ## Uso
 
 ```bash
-# Com o PostgreSQL rodando (via Docker ou manualmente)
+# Com o PostgreSQL e o Keycloak rodando (via Docker ou manualmente)
 uvicorn app.main:app --reload
 ```
 
 Acesse `http://localhost:8000/docs` para a documentação interativa (Swagger).
+
+> **Autenticação**: todas as rotas `/api/*` exigem um Bearer token válido do Keycloak (RS256,
+> issuer/audience configurados pelas variáveis `KEYCLOAK_*`). Sem token a resposta é `401`;
+> apenas `/health` é público. O contrato e o smoke test estão em `AGENTS.md`.
 
 > **Payload**: todos os endpoints da API aceitam e retornam **camelCase** (ex: `statusLabel`, `docUrl`, `createdAt`).
 >
@@ -183,7 +188,7 @@ ruff format --check .
 |-----------|------------|
 | `app/main.py` | Criação da aplicação FastAPI + criação automática das tabelas |
 | `app/api/` | Rotas por entidade (`integration_routes`, `skill_routes`, `output_format_routes`, `history_routes`, `config_routes`, `workflow_agent_routes`) |
-| `app/core/` | Configuração via pydantic-settings (`settings.py`) |
+| `app/core/` | Configuração via pydantic-settings (`settings.py`) e validação JWT/Keycloak (`security.py`) |
 | `app/db/` | Engine, sessão SQLAlchemy e dependência `get_db` |
 | `app/models/` | Modelos ORM (`Integration`, `Skill`, `OutputFormat`, `History`, `Config`, `WorkflowAgent`) |
 | `app/schemas/` | Schemas Pydantic de request/response |
