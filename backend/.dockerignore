@@ -1,0 +1,14 @@
+.venv
+.git
+.gitignore
+__pycache__
+*.py[cod]
+.pytest_cache
+.ruff_cache
+auditoria_backend.egg-info
+tests
+opencode.json
+AGENTS.md
+README.md
+.env
+.env.example

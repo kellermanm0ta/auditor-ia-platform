@@ -1,0 +1,6 @@
+*.py[cod]
+*.egg-info/
+.venv/
+.env
+*.db
+app/__init__.py
