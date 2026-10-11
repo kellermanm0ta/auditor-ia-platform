@@ -1,14 +1,22 @@
 # AuditorIA — Infraestrutura
 
+> **Fonte de verdade factual** (serviços, portas, `container_name`, rotas do nginx, variáveis
+> de ambiente, pré-requisitos). Em divergência com qualquer outro doc, este prevalece. Regras
+> de operação e armadilhas estão em [`AGENTS.md`](./AGENTS.md).
+
 Docker Compose + Nginx que orquestram a stack completa do **AuditorIA**, e também
-servem somente o banco para desenvolvimento local.
+servem banco + Keycloak para desenvolvimento local.
 
 | Serviço   | Imagem / Build                          | Papel                                    |
 |-----------|-----------------------------------------|------------------------------------------|
-| `postgres` | `postgres:15` + `scripts/init.sql` (seed) | Banco de dados                        |
+| `postgres` | `postgres:15` + `scripts/init.sql` (seed) | Banco de dados da aplicação (porta 5432 no host) |
+| `keycloak-db` | `postgres:15`                        | Banco isolado do Keycloak (sem porta no host) |
+| `keycloak` | `quay.io/keycloak/keycloak:26.4.0`     | IdP OIDC (`start-dev --import-realm`, porta 8080) |
 | `backend` | build de `../backend` (`backend/Dockerfile`) | API REST (FastAPI + Uvicorn, porta 8000) |
 | `nextjs`  | build de `../frontend` (`frontend/Dockerfile`) | Web app (Next.js, porta 3000)     |
-| `nginx`   | `nginx:alpine` (proxy)                  | Entrada única (porta 80), proxy `/api/*` |
+| `nginx`   | `nginx:alpine` (proxy)                  | Entrada única (porta 80); proxy `/api/*` e OIDC |
+
+Volumes: `pgdata` (aplicação) e `keycloak-pgdata` (Keycloak).
 
 Todo o setup do banco (Compose + seed) que antes ficava no backend agora vive aqui.
 O `backend/` não tem mais `docker-compose.yml` nem `scripts/`.
@@ -29,6 +37,8 @@ Clone-os no mesmo nível deste repo para a stack subir (o compose usa `../backen
 
 - **Docker** 24+
 - **Docker Compose** v2.23+ (plugin `docker compose`, não `docker-compose`)
+  - Em **Docker 29 / Compose v5**, `up --build` pode exigir entitlements — ver gotcha em
+    [`AGENTS.md`](./AGENTS.md).
 
 ## Configuração inicial
 
@@ -40,21 +50,22 @@ O Compose lê o `.env` do `infra/`. Se algo for omitido, usa defaults sensíveis
 
 ---
 
-## Modo 1 — Desenvolvimento local (somente banco de dados)
+## Modo 1 — Desenvolvimento local (sem nginx)
 
-Sobe **apenas** o PostgreSQL. Backend e frontend rodam na sua máquina (sem Docker),
-com hot-reload — ideal para desenvolvimento.
+Sobe o PostgreSQL **e o Keycloak** (obrigatório: sem ele o front não autentica e `/api/*`
+responde `401`). Backend e frontend rodam na sua máquina (sem Docker), com hot-reload.
 
 ```bash
 cd infra
-docker compose up -d postgres
-# container: auditoria-postgres — porta 5432 exposta no host
+docker compose up -d postgres keycloak
+# auditoria-postgres — porta 5432 no host
+# auditoria-keycloak — porta 8080 no host (keycloak-db sobe por depends_on)
 ```
 
-Com o postgres de pé, rode a API e o web app em terminais separados:
+Com o postgres e o Keycloak de pé, rode a API e o web app em terminais separados:
 
 ```bash
-# backend (FastAPI) — a partir de backend/
+# backend (FastAPI) — a partir de backend/ (lê backend/.env, com KEYCLOAK_ISSUER/JWKS em localhost:8080)
 cd ../backend
 source .venv/bin/activate
 uvicorn app.main:app --reload      # http://localhost:8000/docs
@@ -65,8 +76,10 @@ npm install
 npm run dev                        # http://localhost:3000
 ```
 
-> O `next.config.ts` do frontend tem proxy de dev `/api/*` → `http://localhost:8000/api/*`.
-> O postgres local é alcançado em `localhost:5432` (variaveis do `backend/.env`).
+> O `next.config.ts` do frontend tem proxy de dev `/api/*` → `http://localhost:8000/api/*`,
+> então **não há CORS** e o nginx não é necessário em dev.
+> O postgres local é alcançado em `localhost:5432` (variáveis do `backend/.env`); o Keycloak,
+> em `http://localhost:8080`.
 
 ### Sync de credenciais
 
@@ -78,7 +91,8 @@ coincidir em `POSTGRES_USER`, `POSTGRES_PASSWORD` e `POSTGRES_DB`. Defaults de a
 
 ## 2 — Stack completa (produção)
 
-Sobe todos os serviços (postgres + api + web + nginx) — reproduz o ambiente de produção:
+Sobe todos os serviços (postgres + keycloak-db + keycloak + api + web + nginx) — reproduz o
+ambiente de produção:
 
 ```bash
 cd infra
@@ -92,17 +106,20 @@ Acessos:
 | Web app | http://localhost/ |
 | API (Swagger) | http://localhost/docs |
 | Health check | http://localhost/health |
+| Keycloak | http://localhost:8080/ |
 
-> O Nginx é a única porta exposta. Backend e frontend ficam isolados na rede `app-network`.
+> O Nginx é a única porta exposta além do postgres (5432) e do Keycloak (8080). Backend e
+> frontend ficam isolados na rede `app-network`.
 
 ### Rotação
 
 ```bash
 docker compose up -d            # sobe usando imagens já construídas
 docker compose up -d --build    # sobe reconstruindo as imagens
-docker compose down             # derruba (mantém o volume do banco)
-docker compose down -v          # derruba e apaga o volume do banco (perde dados/seed)
+docker compose down             # derruba (mantém os volumes pgdata/keycloak-pgdata)
+docker compose down -v          # derruba e apaga os volumes (perde dados/seed e reimporta o realm)
 docker compose logs -f backend  # acompanhar logs
+docker compose logs -f keycloak # erros de import do realm aparecem aqui
 ```
 
 ---
@@ -111,8 +128,10 @@ docker compose logs -f backend  # acompanhar logs
 
 ```
 infra/
-├── docker-compose.yml   # orquestração (postgres, backend, nextjs, nginx)
-├── nginx.conf           # proxy: / -> nextjs, /api/* -> backend, /_next/static -> nextjs
+├── docker-compose.yml   # orquestração (postgres, keycloak-db, keycloak, backend, nextjs, nginx)
+├── nginx.conf           # proxy: / -> nextjs, /api/* -> backend, OIDC -> keycloak
+├── keycloak/
+│   └── realm-export.json # realm auditoria (bind read-only em /opt/keycloak/data/import)
 ├── scripts/
 │   └── init.sql         # seed do banco (executado na 1ª subida do postgres)
 ├── .env                 # variáveis locais (não versionar)
@@ -206,6 +225,13 @@ ORDER BY a.created_at;
 | `DEBUG` | `true` | Debug do backend |
 | `NGINX_PORT` | `80` | Porta do nginx no host |
 | `BACKEND_URL` | `http://backend:8000` | Destino do proxy `/api/*` |
+| `KEYCLOAK_PORT` | `8080` | Porta pública do Keycloak no host (acoplada a `KEYCLOAK_HOSTNAME` — ver [`AGENTS.md`](./AGENTS.md)) |
+| `KEYCLOAK_ADMIN` / `KEYCLOAK_ADMIN_PASSWORD` | `admin` / `admin` | Admin bootstrap (trocar em produção) |
+| `KEYCLOAK_DB_USER` / `KEYCLOAK_DB_PASSWORD` / `KEYCLOAK_DB` | `keycloak` | Banco dedicado do Keycloak |
+| `KEYCLOAK_URL` | `http://keycloak:8080` | URL interna (nginx e JWKS do backend) |
+| `KEYCLOAK_HOSTNAME` | `http://localhost:8080` | Host público/issuer; **fonte única** — dele derivam `KEYCLOAK_ISSUER` (backend) e `NEXT_PUBLIC_KEYCLOAK_URL` (frontend) |
+| `NEXT_PUBLIC_KEYCLOAK_REALM` | `auditoria` | Realm do frontend (build arg) |
+| `NEXT_PUBLIC_KEYCLOAK_CLIENT_ID` | `auditoria-frontend` | Client OIDC do frontend (build arg) |
 
 ## Rotas do Nginx
 
@@ -214,6 +240,8 @@ ORDER BY a.created_at;
 | `/_next/static` | `nextjs:3000` | Cache `immutable`, expiry 1y |
 | `/api/*` | `$BACKEND_URL` | Proxy para a API (backend:8000) |
 | `/docs`, `/redoc`, `/openapi.json` | `$BACKEND_URL` | Documentação da API |
+| `~ ^/(realms\|resources\|js)/` | `$KEYCLOAK_URL` | OIDC + assets do Keycloak |
+| `~ ^/\.well-known/` | `$KEYCLOAK_URL` | Discovery OIDC |
 | `/` | `nextjs:3000` | Web app |
 
 ## Solução de problemas
@@ -223,3 +251,5 @@ ORDER BY a.created_at;
   e suba novamente pelo `infra/`.
 - **Seed não é aplicado em banco já criado**: `init.sql` só roda na 1ª criação do volume. Reset:
   `docker compose down -v && docker compose up -d postgres`.
+- **Realm do Keycloak não reimporta**: veja o gotcha do `--import-realm` em
+  [`AGENTS.md`](./AGENTS.md).
