@@ -21,8 +21,9 @@ orquestra os repos irmãos: `../backend` (API FastAPI) e `../frontend` (Next.js)
   `directAccessGrantsEnabled` está ligado **apenas para permitir smoke-test via password grant**
   — em produção pode ser desligado.
 - **Audience** `auditoria-backend` adicionada ao access token por um `oidc-audience-mapper`.
-- **Role** de realm `user`; usuário de teste `dev` / `agentesT2` (`dev@auditoria.local`) — default de
-  dev via `KEYCLOAK_DEV_USER`/`KEYCLOAK_DEV_USER_PASSWORD` no `.env`.
+- **Role** de realm `user`; usuário de teste criado a partir dos placeholders
+  `KEYCLOAK_DEV_USER` / `KEYCLOAK_DEV_USER_PASSWORD` (no `.env`, obrigatórios; email fixo
+  `dev@auditoria.local`).
 - **Tema de login** `auditoria` (dark, alinhado ao dashboard): em `keycloak/themes/auditoria/login/`
   (mount `./keycloak/themes:/opt/keycloak/themes:ro`), ativado por `loginTheme` no `realm-export.json`.
   Herda do tema `keycloak` (`parent=keycloak`, `styles=css/login.css css/auditoria.css`) e sobrescreve
@@ -46,9 +47,11 @@ orquestra os repos irmãos: `../backend` (API FastAPI) e `../frontend` (Next.js)
 - **Smoke test** (password grant, com o stack no ar):
 
 ```bash
+# credenciais vêm de infra/.env (exporte antes de rodar)
+set -a; . ./.env; set +a
 curl -s -X POST http://localhost:8080/realms/auditoria/protocol/openid-connect/token \
   -d grant_type=password -d client_id=auditoria-frontend \
-  -d username=dev -d password=agentesT2 -d scope=openid
+  -d username="$KEYCLOAK_DEV_USER" -d password="$KEYCLOAK_DEV_USER_PASSWORD" -d scope=openid
 # decodifique o access_token: iss=http://localhost:8080/realms/auditoria e aud inclui auditoria-backend
 ```
 
@@ -62,6 +65,9 @@ Fluxo de dev (backend/frontend locais, sem nginx) no `README.md` (*Modo 1*). Com
 `keycloak` no ar, `uvicorn` em `:8000` e `next dev` em `:3000`:
 
 ```bash
+# credenciais do usuário de teste (exporta infra/.env)
+set -a; . infra/.env; set +a
+
 # discovery direto no Keycloak
 curl -s http://localhost:8080/realms/auditoria/.well-known/openid-configuration | jq .issuer
 # esperado: http://localhost:8080/realms/auditoria
@@ -69,24 +75,26 @@ curl -s http://localhost:8080/realms/auditoria/.well-known/openid-configuration 
 # token (password grant — habilitado só para smoke test)
 TOKEN=$(curl -s -X POST http://localhost:8080/realms/auditoria/protocol/openid-connect/token \
   -d grant_type=password -d client_id=auditoria-frontend \
-  -d username=dev -d password=agentesT2 | jq -r .access_token)
+  -d username="$KEYCLOAK_DEV_USER" -d password="$KEYCLOAK_DEV_USER_PASSWORD" | jq -r .access_token)
 
 # API via rewrite do Next (mesma origem do browser): sem token → 401 ; com token → 200
 curl -s -o /dev/null -w "sem token: %{http_code}\n" http://localhost:3000/api/integrations
 curl -s -o /dev/null -w "com token: %{http_code}\n" -H "Authorization: Bearer $TOKEN" http://localhost:3000/api/integrations
 ```
 
-No browser: abra `http://localhost:3000` → **Entrar** → `dev`/`agentesT2` → confirme
+No browser: abra `http://localhost:3000` → **Entrar** → credenciais de `KEYCLOAK_DEV_USER`/
+`KEYCLOAK_DEV_USER_PASSWORD` (`infra/.env`) → confirme
 `/api/integrations` com header `Authorization` (200) → **Sair**.
 
 ## Gotchas
 
-- `.env` não é versionado (`.gitignore`). Crie com `cp .env.example .env`. Credenciais padrão
-  `postgres/postgres/auditoria`; defaults embutidos no compose usam `${VAR:-default}`.
+- `.env` não é versionado (`.gitignore`). Crie com `cp .env.example .env` e **preencha todas as
+  variáveis**: o compose usa `${VAR}` sem fallback — sem o `.env` o stack não sobe. Única exceção:
+  `NEXT_PUBLIC_KEYCLOAK_URL`, que deriva de `KEYCLOAK_HOSTNAME` quando omitida.
 - **Sincronia de credenciais**: `infra/.env` (postgres) e `backend/.env` (uvicorn local) devem
-  bater em `POSTGRES_USER/PASSWORD/DB`. Defaults coincidem nos dois.
+  bater em `POSTGRES_USER/PASSWORD/DB`. Os valores precisam ser idênticos nos dois.
 - **Host do banco diverge**: dev (uvicorn local) usa `localhost:5432`; no Docker é `postgres`
-  (serviço de rede). `POSTGRES_HOST` no compose tem default `postgres`.
+  (serviço de rede) — defina `POSTGRES_HOST` no `.env` de acordo.
 - **Seed só roda na 1ª criação do volume** (`scripts/init.sql`). Reset completo:
   `docker compose down -v && docker compose up -d postgres`.
 - **Imagem não contém `.env`**: Dockerfile do backend copia só `pyproject.toml` + `app/`;

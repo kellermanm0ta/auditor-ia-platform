@@ -53,7 +53,9 @@ Clone-os no mesmo nível deste repo para a stack subir (o compose usa `../backen
 cp .env.example .env
 ```
 
-O Compose lê o `.env` do `infra/`. Se algo for omitido, usa defaults sensíveis.
+O Compose lê o `.env` do `infra/`. **Todas as variáveis são obrigatórias** (sem defaults):
+`cp .env.example .env` e preencha antes de subir. A única exceção é `NEXT_PUBLIC_KEYCLOAK_URL`,
+que deriva de `KEYCLOAK_HOSTNAME` quando omitida.
 
 ---
 
@@ -91,8 +93,7 @@ npm run dev                        # http://localhost:3000
 ### Sync de credenciais
 
 O `backend/.env` (usado pelo `uvicorn` local) e o `infra/.env` (usado pelo postgres) precisam
-coincidir em `POSTGRES_USER`, `POSTGRES_PASSWORD` e `POSTGRES_DB`. Defaults de ambos:
-`postgres` / `postgres` / `auditoria`.
+coincidir em `POSTGRES_USER`, `POSTGRES_PASSWORD` e `POSTGRES_DB`.
 
 ---
 
@@ -224,10 +225,10 @@ ORDER BY a.created_at;
 
 ## Configuração (`infra/.env`)
 
-| Variável | Padrão | Descrição |
-|----------|--------|------|
-| `POSTGRES_USER` | `postgres` | Usuário do banco |
-| `POSTGRES_PASSWORD` | `postgres` | Senha do banco |
+| Variável | Exemplo | Descrição |
+|----------|---------|------|
+| `POSTGRES_USER` | `{postgres-user}` | Usuário do banco |
+| `POSTGRES_PASSWORD` | `{postgres-password}` | Senha do banco |
 | `POSTGRES_DB` | `auditoria` | Nome do banco |
 | `POSTGRES_HOST` | `postgres` | Host do banco visto de dentro da rede docker |
 | `POSTGRES_PORT` | `5432` | Porta do postgres exposta no host |
@@ -235,9 +236,9 @@ ORDER BY a.created_at;
 | `NGINX_PORT` | `80` | Porta do nginx no host |
 | `BACKEND_URL` | `http://backend:8000` | Destino do proxy `/api/*` |
 | `KEYCLOAK_PORT` | `8080` | Porta pública do Keycloak no host (acoplada a `KEYCLOAK_HOSTNAME` — ver [`AGENTS.md`](./AGENTS.md)) |
-| `KEYCLOAK_ADMIN` / `KEYCLOAK_ADMIN_PASSWORD` | `admin` / `agentesT2` | Admin bootstrap (trocar em produção) |
-| `KEYCLOAK_DEV_USER` / `KEYCLOAK_DEV_USER_PASSWORD` | `dev` / `agentesT2` | Usuário de teste do realm (dev-only); placeholders do `realm-export.json` |
-| `KEYCLOAK_DB_USER` / `KEYCLOAK_DB_PASSWORD` / `KEYCLOAK_DB` | `keycloak` | Banco dedicado do Keycloak |
+| `KEYCLOAK_ADMIN` / `KEYCLOAK_ADMIN_PASSWORD` | `{keycloak-admin}` / `{keycloak-admin-password}` | Admin bootstrap (trocar em produção) |
+| `KEYCLOAK_DEV_USER` / `KEYCLOAK_DEV_USER_PASSWORD` | `{keycloak-dev-user}` / `{keycloak-dev-user-password}` | Usuário de teste do realm (dev-only); placeholders do `realm-export.json` |
+| `KEYCLOAK_DB_USER` / `KEYCLOAK_DB_PASSWORD` / `KEYCLOAK_DB` | `{keycloak-db-user}` / `{keycloak-db-password}` / `keycloak` | Banco dedicado do Keycloak |
 | `KEYCLOAK_URL` | `http://keycloak:8080` | URL interna (nginx e JWKS do backend) |
 | `KEYCLOAK_HOSTNAME` | `http://localhost:8080` | Host público/issuer; **fonte única** — dele derivam `KEYCLOAK_ISSUER` (backend) e `NEXT_PUBLIC_KEYCLOAK_URL` (frontend) |
 | `NEXT_PUBLIC_KEYCLOAK_REALM` | `auditoria` | Realm do frontend (build arg) |
