@@ -1,0 +1,250 @@
+/*
+ * AuditorIA — login theme (dark)
+ * Overrides the Keycloak base login theme + PatternFly v3/v4 tokens so the
+ * Keycloak login page matches the dashboard (frontend/app/globals.css).
+ * Loaded after the parent "keycloak" login.css (see theme.properties).
+ */
+
+:root {
+  --aud-bg: #0f0f1a;
+  --aud-surface: #1a1a2e;
+  --aud-border: #2a2a4a;
+  --aud-text: #ffffff;
+  --aud-text-secondary: #8b8ba7;
+  --aud-text-muted: #b8b8d8;
+  --aud-accent: #6c5ce7;
+  --aud-accent-hover: #5a4bd1;
+  --aud-danger: #ff4757;
+
+  /* PatternFly tokens consumed by the base login page */
+  --pf-global--primary-color--100: #6c5ce7;
+  --pf-global--primary-color--200: #5a4bd1;
+  --pf-global--active-color--100: #6c5ce7;
+  --pf-global--link--Color: #6c5ce7;
+  --pf-global--link--Color--hover: #5a4bd1;
+
+  --pf-global--BackgroundColor--100: #1a1a2e;
+  --pf-global--BackgroundColor--light-100: #1a1a2e;
+  --pf-global--BackgroundColor--200: #12122a;
+  --pf-global--BackgroundColor--300: #2a2a4a;
+  --pf-global--BackgroundColor--400: #2a2a4a;
+
+  --pf-global--Color--100: #ffffff;
+  --pf-global--Color--200: #8b8ba7;
+  --pf-global--Color--300: #b8b8d8;
+  --pf-global--Color--light-100: #ffffff;
+
+  --pf-global--BorderColor--100: #2a2a4a;
+  --pf-global--BorderColor--200: #2a2a4a;
+  --pf-global--BorderColor--300: #2a2a4a;
+  --pf-global--BorderColor--400: #3a3a5a;
+
+  --pf-global--danger-color--100: #ff4757;
+  --pf-global--danger-color--200: #ff4757;
+}
+
+body,
+.login-pf {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+}
+
+/* Background */
+.login-pf body {
+  background: radial-gradient(circle at 50% 0%, #1a1a2e 0%, #0f0f1a 55%) no-repeat
+    fixed;
+  background-color: var(--aud-bg);
+  background-size: cover;
+  color: var(--aud-text);
+}
+
+/* Brand header: render the AuditorIA lockup, keep the realm name for a11y */
+#kc-header {
+  color: var(--aud-text);
+}
+
+#kc-header-wrapper {
+  background: url("../img/auditoria-logo.svg") no-repeat center center;
+  background-size: contain;
+  height: 84px;
+  width: 300px;
+  margin: 0 auto;
+  padding: 0;
+  text-indent: -9999px;
+  overflow: hidden;
+  white-space: nowrap;
+  letter-spacing: 0;
+}
+
+/* Card */
+.card-pf {
+  background: var(--aud-surface);
+  border: 1px solid var(--aud-border);
+  border-top: 4px solid var(--aud-accent);
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+  color: var(--aud-text);
+}
+
+#kc-page-title {
+  color: var(--aud-text);
+}
+
+/* Labels, inputs and selects */
+.card-pf label,
+.control-label,
+.pf-c-form__label,
+#kc-form-options .checkbox {
+  color: var(--aud-text-muted);
+}
+
+.pf-c-form-control,
+.form-control,
+textarea.pf-c-form-control {
+  background: var(--aud-bg);
+  border: 1px solid var(--aud-border);
+  color: var(--aud-text);
+}
+
+.pf-c-form-control:focus,
+.form-control:focus {
+  background: var(--aud-bg);
+  border-color: var(--aud-accent);
+  box-shadow: 0 0 0 0.2rem rgba(108, 92, 231, 0.25);
+  color: var(--aud-text);
+}
+
+.pf-c-form-control::placeholder {
+  color: var(--aud-text-secondary);
+}
+
+/* Buttons */
+.btn-primary,
+.pf-c-button.pf-m-primary {
+  background: var(--aud-accent);
+  border-color: var(--aud-accent);
+  color: #ffffff;
+}
+
+.btn-primary:hover,
+.btn-primary:focus,
+.pf-c-button.pf-m-primary:hover,
+.pf-c-button.pf-m-primary:focus {
+  background: var(--aud-accent-hover);
+  border-color: var(--aud-accent-hover);
+}
+
+/* Password visibility toggle (control button) — flat and on-theme in all states */
+.pf-c-button.pf-m-control {
+  --pf-c-button--m-control--BackgroundColor: var(--aud-bg);
+  --pf-c-button--m-control--hover--BackgroundColor: rgba(255, 255, 255, 0.08);
+  --pf-c-button--m-control--active--BackgroundColor: rgba(255, 255, 255, 0.12);
+  --pf-c-button--m-control--focus--BackgroundColor: rgba(255, 255, 255, 0.08);
+  --pf-c-button--m-control--m-expanded--BackgroundColor: rgba(255, 255, 255, 0.08);
+
+  --pf-c-button--m-control--Color: var(--aud-text-secondary);
+  --pf-c-button--m-control--hover--Color: var(--aud-text);
+  --pf-c-button--m-control--active--Color: var(--aud-text);
+  --pf-c-button--m-control--focus--Color: var(--aud-text);
+  --pf-c-button--m-control--m-expanded--Color: var(--aud-text);
+
+  --pf-c-button--m-control--after--BorderTopColor: var(--aud-border);
+  --pf-c-button--m-control--after--BorderRightColor: var(--aud-border);
+  --pf-c-button--m-control--after--BorderBottomColor: var(--aud-border);
+  --pf-c-button--m-control--after--BorderLeftColor: var(--aud-border);
+  --pf-c-button--m-control--hover--after--BorderBottomColor: var(--aud-accent);
+  --pf-c-button--m-control--active--after--BorderBottomColor: var(--aud-accent);
+  --pf-c-button--m-control--focus--after--BorderBottomColor: var(--aud-accent);
+
+  background-color: var(--aud-bg);
+  color: var(--aud-text-secondary);
+}
+
+/* Kill the light PatternFly border box drawn by the ::after pseudo-element */
+.pf-c-button.pf-m-control::after {
+  border-color: var(--aud-border);
+}
+
+.pf-c-button.pf-m-control:hover,
+.pf-c-button.pf-m-control:focus,
+.pf-c-button.pf-m-control:active {
+  background-color: rgba(255, 255, 255, 0.08);
+  color: var(--aud-text);
+}
+
+.pf-c-button.pf-m-control .fa {
+  color: inherit;
+}
+
+/*
+ * The base login page maps the icon to the action (eye = "show", eye-slash =
+ * "hide"). Swap the glyphs so the icon reflects the state instead: open eye =
+ * password visible, slashed eye = password hidden.
+ */
+.pf-c-button.pf-m-control .fa-eye::before {
+  content: "\f070"; /* eye-slash glyph */
+}
+
+.pf-c-button.pf-m-control .fa-eye-slash::before {
+  content: "\f06e"; /* eye glyph */
+}
+
+/* Links */
+.login-pf a,
+.login-pf a:visited {
+  color: var(--aud-accent);
+}
+
+.login-pf a:hover {
+  color: var(--aud-accent-hover);
+}
+
+/* Locale dropdown */
+#kc-locale ul {
+  background-color: var(--aud-surface);
+  border: 1px solid var(--aud-border);
+}
+
+#kc-locale-dropdown a,
+#kc-locale-dropdown button {
+  color: var(--aud-text-secondary);
+}
+
+/* Info / registration footer */
+#kc-info-wrapper {
+  background-color: transparent;
+  color: var(--aud-text-secondary);
+}
+
+.login-pf-page .login-pf-signup {
+  color: var(--aud-text-secondary);
+}
+
+/* Alerts */
+.pf-c-alert.pf-m-danger,
+.alert-error {
+  background: rgba(255, 71, 87, 0.12);
+  border: 1px solid var(--aud-danger);
+}
+
+.pf-c-alert__title,
+.kc-feedback-text {
+  color: var(--aud-danger);
+}
+
+/* Mobile */
+@media (max-width: 767px) {
+  .login-pf body {
+    background: #0f0f1a;
+  }
+
+  #kc-header-wrapper {
+    height: 60px;
+    width: 220px;
+    padding: 0;
+  }
+
+  #kc-info-wrapper {
+    background-color: transparent;
+  }
+}

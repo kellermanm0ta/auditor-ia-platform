@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 340 96" width="340" height="96" role="img" aria-label="AuditorIA">
+  <defs>
+    <linearGradient id="shield" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#7c6cf0"/>
+      <stop offset="1" stop-color="#5a4bd1"/>
+    </linearGradient>
+  </defs>
+  <path d="M48 4 L88 19 V52 C88 76 69 90 48 96 C27 90 8 76 8 52 V19 Z" fill="url(#shield)"/>
+  <path d="M29 50 L42 63 L68 33" fill="none" stroke="#ffffff" stroke-width="8"
+        stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="104" y="65"
+        font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif"
+        font-size="48" font-weight="700" fill="#ffffff">Auditor<tspan fill="#a29bfe">IA</tspan></text>
+</svg>

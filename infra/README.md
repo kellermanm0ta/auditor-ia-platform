@@ -11,7 +11,7 @@ servem banco + Keycloak para desenvolvimento local.
 |-----------|-----------------------------------------|------------------------------------------|
 | `postgres` | `postgres:15` + `scripts/init.sql` (seed) | Banco de dados da aplicação (porta 5432 no host) |
 | `keycloak-db` | `postgres:15`                        | Banco isolado do Keycloak (sem porta no host) |
-| `keycloak` | `quay.io/keycloak/keycloak:26.4.0`     | IdP OIDC (`start-dev --import-realm`, porta 8080) |
+| `keycloak` | `quay.io/keycloak/keycloak:26.4.0`     | IdP OIDC (`start-dev --import-realm`, porta 8080; tema de login `auditoria`) |
 | `backend` | build de `../backend` (`backend/Dockerfile`) | API REST (FastAPI + Uvicorn, porta 8000) |
 | `nextjs`  | build de `../frontend` (`frontend/Dockerfile`) | Web app (Next.js, porta 3000)     |
 | `nginx`   | `nginx:alpine` (proxy)                  | Entrada única (porta 80); proxy `/api/*` e OIDC |
@@ -20,6 +20,13 @@ Volumes: `pgdata` (aplicação) e `keycloak-pgdata` (Keycloak).
 
 Todo o setup do banco (Compose + seed) que antes ficava no backend agora vive aqui.
 O `backend/` não tem mais `docker-compose.yml` nem `scripts/`.
+
+### Tema de login
+
+O Keycloak usa o tema `auditoria` (em `keycloak/themes/auditoria/`, montado em
+`/opt/keycloak/themes`), ativado por `loginTheme` no `realm-export.json`. Segue o visual do
+dashboard (dark, accent `#6c5ce7`): herda do tema `keycloak` e sobrescreve só CSS/logo. O
+compose desliga o cache de temas em dev; detalhes e gotchas em [`AGENTS.md`](./AGENTS.md).
 
 ## Repositórios dependentes
 
@@ -131,7 +138,9 @@ infra/
 ├── docker-compose.yml   # orquestração (postgres, keycloak-db, keycloak, backend, nextjs, nginx)
 ├── nginx.conf           # proxy: / -> nextjs, /api/* -> backend, OIDC -> keycloak
 ├── keycloak/
-│   └── realm-export.json # realm auditoria (bind read-only em /opt/keycloak/data/import)
+│   ├── realm-export.json # realm auditoria (bind read-only em /opt/keycloak/data/import)
+│   └── themes/
+│       └── auditoria/login/  # tema de login (dark) — parent=keycloak
 ├── scripts/
 │   └── init.sql         # seed do banco (executado na 1ª subida do postgres)
 ├── .env                 # variáveis locais (não versionar)

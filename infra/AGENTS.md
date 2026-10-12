@@ -19,6 +19,11 @@ orquestra os repos irmãos: `../backend` (API FastAPI) e `../frontend` (Next.js)
   — em produção pode ser desligado.
 - **Audience** `auditoria-backend` adicionada ao access token por um `oidc-audience-mapper`.
 - **Role** de realm `user`; usuário de teste `testuser` / `testpassword` (`testuser@auditoria.local`).
+- **Tema de login** `auditoria` (dark, alinhado ao dashboard): em `keycloak/themes/auditoria/login/`
+  (mount `./keycloak/themes:/opt/keycloak/themes:ro`), ativado por `loginTheme` no `realm-export.json`.
+  Herda do tema `keycloak` (`parent=keycloak`, `styles=css/login.css css/auditoria.css`) e sobrescreve
+  **apenas CSS/logo** (`resources/css/auditoria.css`, `resources/img/auditoria-logo.svg`) — evite
+  sobrescrever templates `.ftl`. Os assets são servidos em `/resources/<hash>/login/auditoria/...`.
 - **Issuer público vs JWKS interno** (importante): o token é emitido com
   `iss=http://localhost:8080/realms/auditoria` (definido por `KC_HOSTNAME`, que vem de
   `KEYCLOAK_HOSTNAME`); o backend valida esse `iss`, mas busca as chaves no endereço **interno**
@@ -95,6 +100,12 @@ No browser: abra `http://localhost:3000` → **Entrar** → `testuser`/`testpass
   entitlements do builder. Sem isso, o `--build` falha **silenciosamente** e sobe imagens antigas.
 - **Conflito de nome de container**: `auditoria-postgres` pode existir de setups antigos
   (compose do backend). Remova: `docker rm -f auditoria-postgres`.
+- **Cache de tema (dev)**: o `command` do compose desliga o cache de temas
+  (`--spi-theme-cache-themes=false --spi-theme-cache-templates=false --spi-theme-static-max-age=-1`)
+  para editar o tema de login sem reiniciar. Em produção, remova esses flags.
+- **Aplicar `loginTheme` exige reimportar o realm** (`--import-realm` ignora realm existente). Sem
+  apagar os dados da aplicação: `docker compose stop keycloak keycloak-db && docker compose rm -f
+  keycloak keycloak-db && docker volume rm auditoria_keycloak-pgdata && docker compose up -d postgres keycloak`.
 - **Nginx** usa `nginx:alpine` com template via `envsubst` (comando `command:` no compose).
   As variáveis substituídas são `${BACKEND_URL}` e `${KEYCLOAK_URL}` — **mantenha o `command`
   e o `nginx.conf` em sincronia**: adicionar uma nova var no template exige incluir `$${VAR}` na
