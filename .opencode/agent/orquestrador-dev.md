@@ -1,6 +1,6 @@
 ---
 description: Orquestrador de desenvolvimento do monorepo AuditorIA. Entende a demanda, planeja, quebra em tarefas independentes e delega aos especialistas de cada projeto.
-mode: subagent
+mode: primary
 color: "#8B5CF6"
 permission:
   read:

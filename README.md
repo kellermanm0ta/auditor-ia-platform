@@ -103,7 +103,7 @@ delega, e um **especialista** por projeto.
 flowchart TB
     demanda([Demanda do usuário])
 
-    orch["orquestrador-dev<br/>planeja · quebra em tarefas · delega<br/>(read-only — não edita)"]
+    orch["orquestrador-dev<br/>planeja · quebra em tarefas · delega<br/>(mode: primary · read-only — não edita)"]
 
     subgraph especialistas["Especialistas (mode: subagent · escopo isolado por projeto)"]
         fe["frontend-agent<br/>edita só frontend/ · Next.js"]
@@ -122,7 +122,8 @@ flowchart TB
 ```
 
 > Cada especialista só lê/edita o **próprio** projeto e consulta os outros dois via `task`
-> (consulta mútua). O orquestrador apenas lê os três projetos e nunca edita arquivos.
+> (consulta mútua). O `orquestrador-dev` é um **primary agent** (`mode: primary`): pode ser
+> selecionado diretamente na TUI, lê os três projetos e nunca edita arquivos.
 > `.env` é sempre negado; `*.env.example` é liberado.
 
 ## Licença
