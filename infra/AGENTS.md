@@ -14,11 +14,15 @@ orquestra os repos irmãos: `../backend` (API FastAPI) e `../frontend` (Next.js)
 - **Realm** `auditoria`, importado de `keycloak/realm-export.json` (bind read-only em
   `/opt/keycloak/data/import`). O `--import-realm` só importa quando o realm **não existe**:
   editar o JSON e reiniciar **não** aplica as mudanças — exige `docker compose down -v` antes.
+- **Sem credenciais versionadas**: o `users` do `realm-export.json` usa placeholders
+  `${KEYCLOAK_DEV_USER}` / `${KEYCLOAK_DEV_USER_PASSWORD}`, resolvidos a partir do env do
+  container (ver `.env`/`.env.example`). Não coloque senha literal no JSON.
 - **Client público** `auditoria-frontend` (PKCE S256, `standardFlow` + `directAccessGrants`).
   `directAccessGrantsEnabled` está ligado **apenas para permitir smoke-test via password grant**
   — em produção pode ser desligado.
 - **Audience** `auditoria-backend` adicionada ao access token por um `oidc-audience-mapper`.
-- **Role** de realm `user`; usuário de teste `testuser` / `testpassword` (`testuser@auditoria.local`).
+- **Role** de realm `user`; usuário de teste `dev` / `agentesT2` (`dev@auditoria.local`) — default de
+  dev via `KEYCLOAK_DEV_USER`/`KEYCLOAK_DEV_USER_PASSWORD` no `.env`.
 - **Tema de login** `auditoria` (dark, alinhado ao dashboard): em `keycloak/themes/auditoria/login/`
   (mount `./keycloak/themes:/opt/keycloak/themes:ro`), ativado por `loginTheme` no `realm-export.json`.
   Herda do tema `keycloak` (`parent=keycloak`, `styles=css/login.css css/auditoria.css`) e sobrescreve
@@ -44,7 +48,7 @@ orquestra os repos irmãos: `../backend` (API FastAPI) e `../frontend` (Next.js)
 ```bash
 curl -s -X POST http://localhost:8080/realms/auditoria/protocol/openid-connect/token \
   -d grant_type=password -d client_id=auditoria-frontend \
-  -d username=testuser -d password=testpassword -d scope=openid
+  -d username=dev -d password=agentesT2 -d scope=openid
 # decodifique o access_token: iss=http://localhost:8080/realms/auditoria e aud inclui auditoria-backend
 ```
 
@@ -65,14 +69,14 @@ curl -s http://localhost:8080/realms/auditoria/.well-known/openid-configuration 
 # token (password grant — habilitado só para smoke test)
 TOKEN=$(curl -s -X POST http://localhost:8080/realms/auditoria/protocol/openid-connect/token \
   -d grant_type=password -d client_id=auditoria-frontend \
-  -d username=testuser -d password=testpassword | jq -r .access_token)
+  -d username=dev -d password=agentesT2 | jq -r .access_token)
 
 # API via rewrite do Next (mesma origem do browser): sem token → 401 ; com token → 200
 curl -s -o /dev/null -w "sem token: %{http_code}\n" http://localhost:3000/api/integrations
 curl -s -o /dev/null -w "com token: %{http_code}\n" -H "Authorization: Bearer $TOKEN" http://localhost:3000/api/integrations
 ```
 
-No browser: abra `http://localhost:3000` → **Entrar** → `testuser`/`testpassword` → confirme
+No browser: abra `http://localhost:3000` → **Entrar** → `dev`/`agentesT2` → confirme
 `/api/integrations` com header `Authorization` (200) → **Sair**.
 
 ## Gotchas

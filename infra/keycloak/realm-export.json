@@ -67,16 +67,16 @@
   ],
   "users": [
     {
-      "username": "testuser",
+      "username": "${KEYCLOAK_DEV_USER}",
       "enabled": true,
       "emailVerified": true,
-      "email": "testuser@auditoria.local",
-      "firstName": "Test",
+      "email": "dev@auditoria.local",
+      "firstName": "Dev",
       "lastName": "User",
       "credentials": [
         {
           "type": "password",
-          "value": "testpassword",
+          "value": "${KEYCLOAK_DEV_USER_PASSWORD}",
           "temporary": false
         }
       ],

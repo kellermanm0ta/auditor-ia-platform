@@ -235,7 +235,8 @@ ORDER BY a.created_at;
 | `NGINX_PORT` | `80` | Porta do nginx no host |
 | `BACKEND_URL` | `http://backend:8000` | Destino do proxy `/api/*` |
 | `KEYCLOAK_PORT` | `8080` | Porta pública do Keycloak no host (acoplada a `KEYCLOAK_HOSTNAME` — ver [`AGENTS.md`](./AGENTS.md)) |
-| `KEYCLOAK_ADMIN` / `KEYCLOAK_ADMIN_PASSWORD` | `admin` / `admin` | Admin bootstrap (trocar em produção) |
+| `KEYCLOAK_ADMIN` / `KEYCLOAK_ADMIN_PASSWORD` | `admin` / `agentesT2` | Admin bootstrap (trocar em produção) |
+| `KEYCLOAK_DEV_USER` / `KEYCLOAK_DEV_USER_PASSWORD` | `dev` / `agentesT2` | Usuário de teste do realm (dev-only); placeholders do `realm-export.json` |
 | `KEYCLOAK_DB_USER` / `KEYCLOAK_DB_PASSWORD` / `KEYCLOAK_DB` | `keycloak` | Banco dedicado do Keycloak |
 | `KEYCLOAK_URL` | `http://keycloak:8080` | URL interna (nginx e JWKS do backend) |
 | `KEYCLOAK_HOSTNAME` | `http://localhost:8080` | Host público/issuer; **fonte única** — dele derivam `KEYCLOAK_ISSUER` (backend) e `NEXT_PUBLIC_KEYCLOAK_URL` (frontend) |
