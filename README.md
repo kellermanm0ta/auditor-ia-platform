@@ -66,4 +66,4 @@ docker compose up -d --build
 
 ## Licença
 
-A definir.
+Distribuído sob a licença **MIT** — veja [`LICENSE`](./LICENSE).
