@@ -24,13 +24,13 @@ flowchart TB
         nginx["nginx :80/:443<br/>proxy reverso + TLS"]
         nextjs["frontend/ · nextjs :3000<br/>Next.js dashboard"]
         api["backend/ · api :8000<br/>FastAPI — /api/*"]
-        keycloak["keycloak :8080<br/>realm auditoria — issuer OIDC"]
+        keycloak["keycloak :8080 (interno)<br/>realm auditoria — issuer OIDC"]
         postgres[("postgres :5432<br/>db auditoria + db keycloak")]
     end
 
     browser -->|":443 HTTPS"| nginx
     nginx -->|"/  ·  /_next/static"| nextjs
-    nginx -->|"/api/*  ·  /docs"| api
+    nginx -->|"/api/*  ·  /health  ·  /docs"| api
     nginx -->|"/realms · /resources · /.well-known"| keycloak
 
     nextjs -->|"1 · login (Auth Code + PKCE)"| keycloak
@@ -45,7 +45,8 @@ flowchart TB
 
 ## Como rodar (desenvolvimento)
 
-Pré-requisitos: **Docker** 24+ / **Docker Compose** v2.23+, **Python** 3.11+ e **Node.js** 18+.
+Pré-requisitos: **Docker** 24+ / **Docker Compose** v2.23+, **Python** 3.11+ e **Node.js 20.9+**
+(exigência do Next.js 16).
 
 ```bash
 # 1. PostgreSQL + Keycloak (IdP OIDC) a partir de infra/
@@ -85,6 +86,8 @@ docker compose up -d --build
 
 > O `KEYCLOAK_HOSTNAME` do `infra/.env` é a fonte única do issuer público; mudar o host/IP exige
 > regenerar o cert em `infra/certs/` (SAN correspondente) e rebuildar o frontend.
+> Em Docker 29 / Compose v5, `up --build` pode esbarrar no entitlement de `network: host` do
+> backend — veja o workaround em [`infra/AGENTS.md`](./infra/AGENTS.md).
 
 ## Estrutura
 
@@ -92,7 +95,7 @@ docker compose up -d --build
 .
 ├── frontend/   # Next.js (dashboard SPA + OIDC)
 ├── backend/    # FastAPI (CRUD + validação JWT)
-├── infra/      # docker-compose.yml, nginx.conf, keycloak/, scripts/init.sql
+├── infra/      # docker-compose.yml, nginx.conf, keycloak/, scripts/ (init.sql + db-init)
 ├── .opencode/  # agentes e comandos (orquestração de desenvolvimento)
 ├── AGENTS.md   # regras para agentes neste monorepo
 └── README.md

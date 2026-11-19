@@ -8,9 +8,6 @@ permission:
     "frontend/**": allow
     "backend/**": allow
     "infra/**": allow
-    "/home/kellerman/Desenvolvimento/labs/auditorIA/frontend/**": allow
-    "/home/kellerman/Desenvolvimento/labs/auditorIA/backend/**": allow
-    "/home/kellerman/Desenvolvimento/labs/auditorIA/infra/**": allow
     "*.env": deny
     "*.env.*": deny
     "*.env.example": allow

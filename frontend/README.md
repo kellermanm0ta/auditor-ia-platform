@@ -2,18 +2,17 @@
 
 **AuditorIA** é uma plataforma de análise automatizada de repositórios de código utilizando agentes de IA. O sistema orquestra múltiplos agentes especializados para avaliar segurança, arquitetura, qualidade do código, desempenho e dependências de um projeto.
 
-## Repositório da API dependida
+## API no mesmo monorepo
 
-Todas as abas consomem dados de uma API REST (skills, workflow, histórico, integrações,
-configurações e formatos de saída). O repositório dela:
-
-```
-git@github.com:kellermanm0ta/auditor-ia-backend.git
-```
+Este projeto é o `frontend/` do monorepo AuditorIA. As abas de dados (skills, workflow,
+histórico, integrações, configurações e formatos de saída) consomem a API REST servida pelo
+`../backend` (não há mais repositório separado da API). A tela de análise usa o relatório de
+exemplo estático em `public/analysis.md` (a execução real dos agentes ainda não está ligada ao
+backend).
 
 Em desenvolvimento, o Next.js faz proxy de `/api/*` → `http://localhost:8000/api/*` (ver
-`next.config.ts`). Certifique-se de que o backend, o banco e o Keycloak (via `../infra`)
-estejam rodando.
+`next.config.ts`). Certifique-se de que o backend, o banco e o Keycloak (`../infra`) estejam
+rodando.
 
 > **IDs:** todos os identificadores (e chaves estrangeiras como `dependeDe` e `outputFormatId`)
 > são `string` geradas pelo backend. Ao criar registros, **omita o `id`** do corpo da requisição —
@@ -51,14 +50,15 @@ Fluxo **Authorization Code + PKCE (S256)** via `oidc-client-ts` + `react-oidc-co
 
 ## Pré-requisitos
 
-- **Node.js** versão 18 ou superior
-- **npm** (acompanha o Node.js) ou **yarn** / **pnpm**
-- **Keycloak + PostgreSQL** — orquestrados por `../infra` (`docker compose up -d postgres keycloak`).
+- **Node.js** 20.9 ou superior (exigência do Next.js 16)
+- **npm** (acompanha o Node.js)
+- **Keycloak + PostgreSQL** — orquestrados por `../infra`
+  (`KEYCLOAK_HOSTNAME=http://localhost:8080 docker compose up -d postgres keycloak`).
   O app exige login OIDC e a API responde `401` sem token.
 
 ## Como executar
 
-> **Nota:** Todas as abas consomem dados de uma API REST. Em desenvolvimento, o Next.js faz proxy de `/api/*` para `http://localhost:8000/api/*` (configurado em `next.config.ts`). Certifique-se de que o backend esteja rodando na porta 8000.
+> **Nota:** As abas de dados consomem a API REST (a tela de análise usa o relatório estático `public/analysis.md`). Em desenvolvimento, o Next.js faz proxy de `/api/*` para `http://localhost:8000/api/*` (configurado em `next.config.ts`). Certifique-se de que o backend esteja rodando na porta 8000.
 
 ### Linux / macOS / Windows (comando único)
 
@@ -70,14 +70,15 @@ npm install
 cp .env.example .env.local
 
 # 3. Subir Keycloak + PostgreSQL (a partir de ../infra)
-cd ../infra && docker compose up -d postgres keycloak && cd ../frontend
+cd ../infra && KEYCLOAK_HOSTNAME=http://localhost:8080 docker compose up -d postgres keycloak && cd ../frontend
 
 # 4. Iniciar o servidor de desenvolvimento
 npm run dev
 ```
 
 5. Abra [http://localhost:3000](http://localhost:3000) no navegador. O app redireciona para o
-   Keycloak (`http://localhost:8080`): faça login com um usuário do realm `auditoria`.
+   Keycloak (`http://localhost:8080` no Modo 1; no full stack via nginx, `https://localhost`):
+   faça login com um usuário do realm `auditoria`.
 
 ### Passo a passo (Linux)
 
@@ -86,7 +87,7 @@ npm run dev
 sudo apt update && sudo apt install nodejs npm -y
 
 # Verificar versão
-node --version   # deve ser >= 18
+node --version   # deve ser >= 20.9
 
 # Clonar o projeto e entrar no diretório
 cd auditor-ia
@@ -95,7 +96,7 @@ cd auditor-ia
 cp .env.example .env.local
 
 # Subir Keycloak + PostgreSQL (repositório infra/)
-cd ../infra && docker compose up -d postgres keycloak && cd ../frontend
+cd ../infra && KEYCLOAK_HOSTNAME=http://localhost:8080 docker compose up -d postgres keycloak && cd ../frontend
 
 # Instalar dependências
 npm install
@@ -114,8 +115,13 @@ npm run dev
 cd C:\caminho\para\auditor-ia
 ```
 
-4. Configure o ambiente (`Copy-Item .env.example .env.local`) e garanta Keycloak + PostgreSQL no ar
-   (`cd ..\infra; docker compose up -d postgres keycloak`).
+4. Configure o ambiente (`Copy-Item .env.example .env.local`) e garanta Keycloak + PostgreSQL no ar:
+
+```powershell
+cd ..\infra
+$env:KEYCLOAK_HOSTNAME = "http://localhost:8080"   # issuer HTTP no Modo 1 (sem nginx)
+docker compose up -d postgres keycloak
+```
 
 5. Instale as dependências e inicie:
 

@@ -69,7 +69,8 @@ tests/             — pytest-asyncio tests using httpx ASGITransport
 - Any `InvalidTokenError` / `PyJWKClientError` → `HTTPException(401, "Invalid or expired token")`
 - Frontend performs Authorization Code + PKCE; the backend only validates the access token
 - Shared contract:
-  - issuer: `http://localhost:8080/realms/auditoria`
+  - issuer: `http://localhost:8080/realms/auditoria` (Modo 1/uvicorn local; no full stack via
+    nginx é `https://localhost/realms/auditoria`)
   - audience: `auditoria-backend`
   - client id: `auditoria-frontend`
   - alg: RS256

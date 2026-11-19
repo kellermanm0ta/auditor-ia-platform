@@ -2,19 +2,17 @@
 
 API backend do AuditorIA, um sistema de auditoria inteligente.
 
-## Repositório de infraestrutura dependida
+## Infraestrutura no mesmo monorepo
 
-O PostgreSQL e o Keycloak são orquestrados pelo repositório de infraestrutura do AuditorIA:
+Este projeto é o `backend/` do monorepo AuditorIA. O PostgreSQL e o Keycloak são orquestrados
+pelo `infra/` irmão (não há mais repositório separado de infraestrutura).
 
-```
-git@github.com:kellermanm0ta/auditoria-infra.git
-```
-
-Para subir o banco e o Keycloak em desenvolvimento, clone a infra num diretório irmão e rode:
+Para subir o banco e o Keycloak em desenvolvimento, a partir de `backend/`:
 
 ```bash
-cd auditoria-infra
-docker compose up -d postgres keycloak
+cd ../infra
+# Modo 1 (uvicorn local, sem nginx): força o issuer HTTP direto do Keycloak
+KEYCLOAK_HOSTNAME=http://localhost:8080 docker compose up -d postgres keycloak
 ```
 
 ## Pré-requisitos
@@ -24,7 +22,7 @@ docker compose up -d postgres keycloak
 
 ## Setup com Docker (recomendado)
 
-O banco é orquestrado pelo `infra/` (anti-guias de infra do repositório), não pelo backend:
+O banco é orquestrado pelo `infra/` (compose e seed vivem lá), não pelo backend:
 
 ```bash
 # 1. Configure as variáveis de ambiente
@@ -33,7 +31,7 @@ cp .env.example .env
 # 2. Sobe PostgreSQL + Keycloak (a partir de infra/)
 cd ../infra
 cp .env.example .env       # primeira vez
-docker compose up -d postgres keycloak
+KEYCLOAK_HOSTNAME=http://localhost:8080 docker compose up -d postgres keycloak
 
 # 3. Instale as dependências Python (volte para backend/)
 cd ../backend
@@ -58,7 +56,8 @@ uvicorn app.main:app --reload
 > O `backend/.env` segue sendo o usado pelo `uvicorn` local: credenciais (`POSTGRES_USER`,
 > `POSTGRES_PASSWORD`, `POSTGRES_DB`, `POSTGRES_HOST=localhost`, `POSTGRES_PORT=5432`) devem
 > coincidir com as do banco, e `KEYCLOAK_ISSUER`/`KEYCLOAK_JWKS_URL` devem apontar para o
-> Keycloak em `http://localhost:8080`.
+> Keycloak em `http://localhost:8080`. O `KEYCLOAK_HOSTNAME=...` no comando acima mantém esse
+> issuer HTTP (o `infra/.env` padrão usa `https://localhost` via nginx).
 
 ### Docker Compose — versões compatíveis
 
@@ -91,6 +90,10 @@ pip install -e ".[dev]"
 uvicorn app.main:app --reload
 ```
 
+> Se usar o Keycloak do `../infra` (Docker) em vez de um Keycloak local, suba-o com
+> `KEYCLOAK_HOSTNAME=http://localhost:8080` para manter o issuer HTTP esperado pelo
+> `backend/.env` (ver `infra/README.md`, *Modo 1*).
+
 ## Uso
 
 ```bash
@@ -117,8 +120,8 @@ PostgreSQL (via compose do `infra/`), populando o banco com dados padrão:
 
 | Tabela | Registros seedados |
 |---|---|
-| `integrations` | GitHub Actions, GitLab CI, Jenkins, Webhook, CLI, Slack |
-| `skills` | Segurança, Arquitetura, Code Smell, Desempenho, Dependências |
+| `integrations` | GitHub Actions, GitLab CI, Jenkins, Webhook Genérico, CLI (Linha de Comando), Slack |
+| `skills` | Análise de Segurança, Análise de Arquitetura, Code Smell, Análise de Desempenho, Dependências |
 | `output_formats` | Markdown, JSON, HTML, PDF |
 | `history` | 5 análises de exemplo |
 | `config` | Configuração inicial (modo `PARALELO`, markdown, 3 skills habilitadas) |
@@ -129,9 +132,12 @@ Os `id` de todos os registros seedados também são gerados por hash (`TEXT`).
 Para resetar o banco e recomeçar do zero (a partir de `infra/`):
 
 ```bash
-docker compose down -v
-docker compose up -d postgres
+docker compose down -v       # apaga pgdata (aplicação + database do Keycloak)
+docker compose up -d postgres keycloak
 ```
+
+> Como o Keycloak usa o mesmo Postgres, o reset também apaga o database `keycloak`; o realm é
+> reimportado do `realm-export.json` na subida seguinte.
 
 ## Endpoints
 

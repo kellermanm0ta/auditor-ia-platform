@@ -126,7 +126,8 @@ No browser: abra `http://localhost:3000` → **Entrar** → credenciais de `KEYC
 - **Host do banco diverge**: dev (uvicorn local) usa `localhost:5432`; no Docker é `postgres`
   (serviço de rede) — defina `POSTGRES_HOST` no `.env` de acordo.
 - **Seed só roda na 1ª criação do volume** (`scripts/init.sql`). Reset completo:
-  `docker compose down -v && docker compose up -d postgres`.
+  `docker compose down -v && docker compose up -d postgres` (o `down -v` apaga também o database
+  `keycloak`; o realm é reimportado na subida seguinte do Keycloak).
 - **Imagem não contém `.env`**: Dockerfile do backend copia só `pyproject.toml` + `app/`;
   toda config chega por env vars do compose.
 - **Build do backend usa `build.network: host`** no compose — necessário porque o build padrão

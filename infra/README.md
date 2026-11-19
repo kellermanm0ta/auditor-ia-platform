@@ -10,6 +10,7 @@ servem banco + Keycloak para desenvolvimento local.
 | Serviço   | Imagem / Build                          | Papel                                    |
 |-----------|-----------------------------------------|------------------------------------------|
 | `postgres` | `postgres:15` + `scripts/init.sql` (seed) | Banco único da aplicação + Keycloak (porta 5432 no host, só em `127.0.0.1`) |
+| `db-init` | `postgres:15` (one-shot) | Cria role/database `keycloak` no Postgres único (idempotente) |
 | `keycloak` | build de `keycloak/` (Dockerfile `start --optimized`) | IdP OIDC (porta 8080, só em `127.0.0.1`; tema `auditoria`) |
 | `backend` | build de `../backend` (`backend/Dockerfile`) | API REST (FastAPI + Uvicorn, porta 8000) |
 | `nextjs`  | build de `../frontend` (`frontend/Dockerfile`) | Web app (Next.js, porta 3000)     |
@@ -41,20 +42,19 @@ O `backend/` não tem mais `docker-compose.yml` nem `scripts/`.
 
 O Keycloak usa o tema `auditoria` (em `keycloak/themes/auditoria/`, montado em
 `/opt/keycloak/themes`), ativado por `loginTheme` no `realm-export.json`. Segue o visual do
-dashboard (dark, accent `#6c5ce7`): herda do tema `keycloak` e sobrescreve só CSS/logo. O
-compose desliga o cache de temas em dev; detalhes e gotchas em [`AGENTS.md`](./AGENTS.md).
+dashboard (dark, accent `#6c5ce7`): herda do tema `keycloak` e sobrescreve só CSS/logo.
+O compose roda em modo produção (`start --optimized`), **sem hot-reload de tema**: após editar
+`keycloak/themes/`, reinicie o container. Detalhes e gotchas em [`AGENTS.md`](./AGENTS.md).
 
-## Repositórios dependentes
+## Projetos orquestrados
 
-Este projeto orquestra os demais serviços do AuditorIA (builda as imagens a partir dos
-seus Dockerfiles e os conecta na rede):
+Este é um **monorepo**: `infra/` builda as imagens dos projetos irmãos `../backend` e
+`../frontend`, que já estão no mesmo repositório (o compose usa esses caminhos relativos).
 
-| Projeto | Repositório |
-|---|---|
-| API REST (backend) | `git@github.com:kellermanm0ta/auditor-ia-backend.git` |
-| Web app (frontend) | `git@github.com:kellermanm0ta/auditor-ia.git` |
-
-Clone-os no mesmo nível deste repo para a stack subir (o compose usa `../backend` e `../frontend`).
+| Projeto | Diretório | Dockerfile |
+|---|---|---|
+| API REST (backend) | [`../backend`](../backend) | `backend/Dockerfile` |
+| Web app (frontend) | [`../frontend`](../frontend) | `frontend/Dockerfile` |
 
 ## Pré-requisitos
 
@@ -71,7 +71,8 @@ cp .env.example .env
 
 O Compose lê o `.env` do `infra/`. **Todas as variáveis são obrigatórias** (sem defaults):
 `cp .env.example .env` e preencha antes de subir. A única exceção é `NEXT_PUBLIC_KEYCLOAK_URL`,
-que deriva de `KEYCLOAK_HOSTNAME` quando omitida.
+que deriva de `KEYCLOAK_HOSTNAME` quando omitida. Além do `.env`, `infra/certs/` precisa existir
+com `fullchain.pem` + `privkey.pem` (ver *TLS* acima).
 
 ---
 
@@ -118,13 +119,17 @@ coincidir em `POSTGRES_USER`, `POSTGRES_PASSWORD` e `POSTGRES_DB`.
 
 ## 2 — Stack completa (produção)
 
-Sobe todos os serviços (postgres + keycloak + api + web + nginx) — reproduz o
+Sobe todos os serviços (postgres + db-init + keycloak + api + web + nginx) — reproduz o
 ambiente de produção:
 
 ```bash
 cd infra
 docker compose up -d --build
 ```
+
+> Em Docker 29 / Compose v5, o `--build` pode falhar por causa de `build.network: host` no
+> backend — use o workaround descrito em [`AGENTS.md`](./AGENTS.md) (`buildx bake` com
+> `--allow=network.host`, seguido de `docker compose up -d`).
 
 Acessos:
 
@@ -241,7 +246,9 @@ Seed padrão (`scripts/init.sql`):
 | Análise de Desempenho | Code Smell |
 | Análise de Segurança | Análise de Desempenho |
 
-A execução segue a cadeia: **orquestrador → Arquitetura → Code Smell → Desempenho → Segurança**. A ordem de execução real é a topológica da DAG (raiz primeiro).
+A ordem definida pelo grafo é: **orquestrador → Arquitetura → Code Smell → Desempenho → Segurança**
+(topológica da DAG, raiz primeiro). O backend atual expõe apenas o CRUD de `workflow_agents`
+(não há execução real dos agentes).
 
 Para consultar a cadeia:
 
@@ -261,7 +268,7 @@ ORDER BY a.created_at;
 | `POSTGRES_DB` | `auditoria` | Nome do banco |
 | `POSTGRES_HOST` | `postgres` | Host do banco visto de dentro da rede docker |
 | `POSTGRES_PORT` | `5432` | Porta do postgres exposta no host (bind `127.0.0.1`) |
-| `DEBUG` | `true` | Debug do backend |
+| `DEBUG` | `true` | Lida por `settings.debug` no backend (atualmente sem efeito no comportamento da API) |
 | `NGINX_PORT` | `80` | Porta HTTP no host (só redireciona para HTTPS) |
 | `NGINX_TLS_PORT` | `443` | Porta HTTPS no host (TLS terminado no nginx) |
 | `BACKEND_URL` | `http://backend:8000` | Destino do proxy `/api/*` e `/health` |
@@ -287,7 +294,8 @@ ORDER BY a.created_at;
 | `~ ^/\.well-known/` | `$KEYCLOAK_URL` | Discovery OIDC |
 | `/` | `nextjs:3000` | Web app |
 
-Todas as locations enviam `X-Forwarded-Proto https` (o Keycloak usa isso para cookies/redirects).
+As locations que proxeiam para o backend e para o Keycloak enviam `X-Forwarded-Proto https`
+(o Keycloak usa isso para cookies/redirects).
 
 ## Solução de problemas
 
@@ -301,6 +309,7 @@ Todas as locations enviam `X-Forwarded-Proto https` (o Keycloak usa isso para co
   com o compose antigo (`backend/docker-compose.yml`). Remova: `docker rm -f auditoria-postgres`
   e suba novamente pelo `infra/`.
 - **Seed não é aplicado em banco já criado**: `init.sql` só roda na 1ª criação do volume. Reset:
-  `docker compose down -v && docker compose up -d postgres`.
+  `docker compose down -v && docker compose up -d postgres` (o `down -v` também apaga o database
+  do Keycloak; o realm é reimportado na subida seguinte do `keycloak`).
 - **Realm do Keycloak não reimporta**: veja o gotcha do `--import-realm` em
   [`AGENTS.md`](./AGENTS.md).

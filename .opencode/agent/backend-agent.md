@@ -6,14 +6,12 @@ permission:
   read:
     "*": deny
     "backend/**": allow
-    "/home/kellerman/Desenvolvimento/labs/auditorIA/backend/**": allow
     "*.env": deny
     "*.env.*": deny
     "*.env.example": allow
   edit:
     "*": deny
     "backend/**": allow
-    "/home/kellerman/Desenvolvimento/labs/auditorIA/backend/**": allow
   glob:
     "*": deny
     "backend/**": allow

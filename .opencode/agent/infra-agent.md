@@ -6,14 +6,12 @@ permission:
   read:
     "*": deny
     "infra/**": allow
-    "/home/kellerman/Desenvolvimento/labs/auditorIA/infra/**": allow
     "*.env": deny
     "*.env.*": deny
     "*.env.example": allow
   edit:
     "*": deny
     "infra/**": allow
-    "/home/kellerman/Desenvolvimento/labs/auditorIA/infra/**": allow
   glob:
     "*": deny
     "infra/**": allow

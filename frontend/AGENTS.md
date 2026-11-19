@@ -12,7 +12,7 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 
 ## Commands
 - `npm run dev` — start dev server
-- **Dev prerequisites**: the IdP must be up (`cd ../infra && KEYCLOAK_HOSTNAME=http://localhost:8080 docker compose up -d postgres keycloak`; the override keeps the HTTP issuer, since `infra/.env` defaults to `https://localhost` via nginx) and the backend running on `:8000`. Login redirects to `localhost:8080`; `/api/*` is proxied to `localhost:8000` by the `next.config.ts` rewrite, so **no nginx** is needed in dev.
+- **Dev prerequisites**: the IdP must be up (`cd ../infra && KEYCLOAK_HOSTNAME=http://localhost:8080 docker compose up -d postgres keycloak`; the override keeps the HTTP issuer, since `infra/.env` defaults to `https://localhost` via nginx) and the backend running on `:8000`. Login redirects to `localhost:8080` in Modo 1 (full stack uses `https://localhost` via nginx); `/api/*` is proxied to `localhost:8000` by the `next.config.ts` rewrite, so **no nginx** is needed in dev.
 - `npm run build` — production build (also runs TypeScript check)
 - `npm run lint` — ESLint (no type check)
 - No tests exist. No test framework is configured.
@@ -22,7 +22,7 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 ## Architecture
 - **SPA with client-side routing** — `app/[[...slug]]/page.tsx` is the single Next.js entry; it mounts a `react-router-dom` `RouterProvider` built by `createRouter()` in `lib/routes.tsx`. Sidebar links are real URLs (`/`, `/skills`, `/workflow`, `/historico`, `/integracoes`, `/config`) rendered through `<Outlet/>` in `components/shared/AppTemplate.tsx`. There is no `app/page.tsx` and no `activeTab` state.
 - **All components are `'use client'`** because every tab has interactivity (toggles, buttons, copy, search).
-- **All tab data comes from the backend API** via SWR hooks in `hooks/` (no local `data/` fixtures). `lib/api.ts` wraps `fetch` for `/api/*`; `authHeaders()` injects the OIDC Bearer token.
+- **Data-driven tabs come from the backend API** via SWR hooks in `hooks/` (no local `data/` fixtures). `lib/api.ts` wraps `fetch` for `/api/*`; `authHeaders()` injects the OIDC Bearer token. The analysis screen (`HomeTab`) is the exception: it fetches the static `/analysis.md` sample report.
 - **Path alias**: `@/*` maps to project root (e.g. `@/hooks/useSkills`, `@/components/shared/Sidebar`).
 - **API proxy** (dev only): `next.config.ts` rewrites `/api/:path*` → `http://localhost:8000/api/:path*` to avoid CORS. In production, Nginx routes `/api/*` to the backend (see `../infra`).
 
