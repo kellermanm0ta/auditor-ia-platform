@@ -3,7 +3,7 @@
   "displayName": "AuditorIA",
   "loginTheme": "auditoria",
   "enabled": true,
-  "sslRequired": "none",
+  "sslRequired": "external",
   "registrationAllowed": false,
   "loginWithEmailAllowed": true,
   "duplicateEmailsAllowed": false,
@@ -40,6 +40,7 @@
       "consentRequired": false,
       "fullScopeAllowed": true,
       "redirectUris": [
+        "https://localhost/*",
         "http://localhost:3000/*",
         "http://localhost/*"
       ],
@@ -48,7 +49,7 @@
       ],
       "attributes": {
         "pkce.code.challenge.method": "S256",
-        "post.logout.redirect.uris": "http://localhost:3000/*##http://localhost/*"
+        "post.logout.redirect.uris": "https://localhost/*##http://localhost:3000/*##http://localhost/*"
       },
       "protocolMappers": [
         {

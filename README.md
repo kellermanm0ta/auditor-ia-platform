@@ -21,15 +21,14 @@ flowchart TB
     browser([Usuário / browser])
 
     subgraph compose["infra/ · docker compose up (rede app-network)"]
-        nginx["nginx :80<br/>proxy reverso"]
-        nextjs["frontend/ · nextjs :3000<br/>Next.js 16 — dashboard SPA"]
+        nginx["nginx :80/:443<br/>proxy reverso + TLS"]
+        nextjs["frontend/ · nextjs :3000<br/>Next.js dashboard"]
         api["backend/ · api :8000<br/>FastAPI — /api/*"]
         keycloak["keycloak :8080<br/>realm auditoria — issuer OIDC"]
-        postgres[("postgres :5432<br/>db auditoria")]
-        keycloakdb[("keycloak-db<br/>db keycloak")]
+        postgres[("postgres :5432<br/>db auditoria + db keycloak")]
     end
 
-    browser -->|":80 HTTP"| nginx
+    browser -->|":443 HTTPS"| nginx
     nginx -->|"/  ·  /_next/static"| nextjs
     nginx -->|"/api/*  ·  /docs"| api
     nginx -->|"/realms · /resources · /.well-known"| keycloak
@@ -38,7 +37,7 @@ flowchart TB
     nextjs -->|"2 · /api/* + Bearer token"| api
     api -->|"3 · valida JWT (JWKS interno)"| keycloak
     api -->|"SQLAlchemy"| postgres
-    keycloak -->|"SQL"| keycloakdb
+    keycloak -->|"SQL (database keycloak)"| postgres
 ```
 
 > Em dev, o `next dev` (`:3000`) faz proxy de `/api/*` direto para `http://localhost:8000` —
@@ -52,7 +51,8 @@ Pré-requisitos: **Docker** 24+ / **Docker Compose** v2.23+, **Python** 3.11+ e 
 # 1. PostgreSQL + Keycloak (IdP OIDC) a partir de infra/
 cd infra
 cp .env.example .env
-docker compose up -d postgres keycloak
+# Modo 1 (sem nginx): força o issuer HTTP direto do Keycloak; o .env usa https://localhost (nginx)
+KEYCLOAK_HOSTNAME=http://localhost:8080 docker compose up -d postgres keycloak
 
 # 2. API (FastAPI) a partir de backend/
 cd ../backend
@@ -76,11 +76,15 @@ Todas as rotas `/api/*` exigem login OIDC (Bearer token do Keycloak); apenas `/h
 ```bash
 cd infra
 docker compose up -d --build
-# Web app:        http://localhost/
-# API (Swagger):  http://localhost/docs
-# Health check:   http://localhost/health
-# Keycloak:       http://localhost:8080/
+# Web app:        https://localhost/          (cert autoassinado: aceite o aviso)
+# API (Swagger):  https://localhost/docs
+# Health check:   https://localhost/health
+# Keycloak:       https://localhost/realms/auditoria/  (via nginx)
+# Admin Keycloak: http://127.0.0.1:8080/admin          (local/túnel SSH)
 ```
+
+> O `KEYCLOAK_HOSTNAME` do `infra/.env` é a fonte única do issuer público; mudar o host/IP exige
+> regenerar o cert em `infra/certs/` (SAN correspondente) e rebuildar o frontend.
 
 ## Estrutura
 

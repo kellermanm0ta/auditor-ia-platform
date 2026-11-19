@@ -1,6 +1,9 @@
 # Ambiente local (não versionar credenciais)
 .env
 
+# Certificados TLS locais (nunca versionar chave privada)
+certs/
+
 # Logs
 *.log
 

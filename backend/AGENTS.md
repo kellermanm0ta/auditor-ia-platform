@@ -14,7 +14,8 @@
 
 ```bash
 # start PostgreSQL + Keycloak (compose lives in ../infra — dev also needs the IdP)
-cd ../infra && docker compose up -d postgres keycloak
+# force the HTTP issuer: infra/.env defaults to https://localhost (nginx)
+cd ../infra && KEYCLOAK_HOSTNAME=http://localhost:8080 docker compose up -d postgres keycloak
 
 # run dev server (from repo root)
 cd ../backend && uvicorn app.main:app --reload
@@ -81,7 +82,7 @@ tests/             — pytest-asyncio tests using httpx ASGITransport
 
 ## Key facts
 - `.env` is gitignored; copy `.env.example` to get started
-- PostgreSQL and Keycloak run via the compose in `../infra` — `cd ../infra && docker compose up -d postgres keycloak` (reads env vars from `infra/.env` — no hardcoded credentials). Keycloak is required in dev too: `/api/*` returns 401 without a valid token, and `get_current_user` needs JWKS reachable at `http://localhost:8080/...` (see `backend/.env`).
+- PostgreSQL and Keycloak run via the compose in `../infra` — `cd ../infra && KEYCLOAK_HOSTNAME=http://localhost:8080 docker compose up -d postgres keycloak` (the `.env` defaults to `https://localhost` via nginx; this override keeps the local HTTP issuer). Keycloak is required in dev too: `/api/*` returns 401 without a valid token, and `get_current_user` needs JWKS reachable at `http://localhost:8080/...` (see `backend/.env`).
 - `backend/.env` drives local `uvicorn`: `POSTGRES_HOST=localhost`, `POSTGRES_PORT=5432`; must match `infra/.env` creds (postgres/postgres/auditoria)
 - Full stack (postgres + api + nextjs + nginx) comes up from `../infra`: `docker compose up -d --build`
 - `docker compose` requires Docker Engine 24+ and Compose v2.23+; use `docker compose` (plugin), not `docker-compose`

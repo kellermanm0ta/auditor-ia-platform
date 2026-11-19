@@ -12,7 +12,7 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 
 ## Commands
 - `npm run dev` — start dev server
-- **Dev prerequisites**: the IdP must be up (`cd ../infra && docker compose up -d postgres keycloak`) and the backend running on `:8000`. Login redirects to `localhost:8080`; `/api/*` is proxied to `localhost:8000` by the `next.config.ts` rewrite, so **no nginx** is needed in dev.
+- **Dev prerequisites**: the IdP must be up (`cd ../infra && KEYCLOAK_HOSTNAME=http://localhost:8080 docker compose up -d postgres keycloak`; the override keeps the HTTP issuer, since `infra/.env` defaults to `https://localhost` via nginx) and the backend running on `:8000`. Login redirects to `localhost:8080`; `/api/*` is proxied to `localhost:8000` by the `next.config.ts` rewrite, so **no nginx** is needed in dev.
 - `npm run build` — production build (also runs TypeScript check)
 - `npm run lint` — ESLint (no type check)
 - No tests exist. No test framework is configured.

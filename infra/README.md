@@ -9,14 +9,30 @@ servem banco + Keycloak para desenvolvimento local.
 
 | Serviço   | Imagem / Build                          | Papel                                    |
 |-----------|-----------------------------------------|------------------------------------------|
-| `postgres` | `postgres:15` + `scripts/init.sql` (seed) | Banco de dados da aplicação (porta 5432 no host) |
-| `keycloak-db` | `postgres:15`                        | Banco isolado do Keycloak (sem porta no host) |
-| `keycloak` | `quay.io/keycloak/keycloak:26.4.0`     | IdP OIDC (`start-dev --import-realm`, porta 8080; tema de login `auditoria`) |
+| `postgres` | `postgres:15` + `scripts/init.sql` (seed) | Banco único da aplicação + Keycloak (porta 5432 no host, só em `127.0.0.1`) |
+| `keycloak` | build de `keycloak/` (Dockerfile `start --optimized`) | IdP OIDC (porta 8080, só em `127.0.0.1`; tema `auditoria`) |
 | `backend` | build de `../backend` (`backend/Dockerfile`) | API REST (FastAPI + Uvicorn, porta 8000) |
 | `nextjs`  | build de `../frontend` (`frontend/Dockerfile`) | Web app (Next.js, porta 3000)     |
-| `nginx`   | `nginx:alpine` (proxy)                  | Entrada única (porta 80); proxy `/api/*` e OIDC |
+| `nginx`   | `nginx:alpine` (proxy + TLS)            | Entrada única (80→443); TLS, `/api/*`, `/health` e OIDC |
 
-Volumes: `pgdata` (aplicação) e `keycloak-pgdata` (Keycloak).
+Volume: `pgdata` (aplicação + database `keycloak`). O Keycloak compartilha o mesmo Postgres da
+aplicação; o database/role são criados pelo serviço one-shot `db-init` (ver `scripts/create-keycloak-db.sh`).
+
+### TLS (local e VPS)
+
+O nginx termina TLS com cert autoassinado em `infra/certs/` (`fullchain.pem` + `privkey.pem`,
+**gitignored**), montado em `/etc/nginx/certs`. O browser avisa uma vez; `curl` precisa de `-k`.
+Para regenerar (SAN obrigatório):
+
+```bash
+openssl req -x509 -newkey rsa:2048 -nodes -days 365 \
+  -keyout certs/privkey.pem -out certs/fullchain.pem \
+  -subj "/CN=localhost" -addext "subjectAltName=DNS:localhost,IP:127.0.0.1"
+```
+
+O Keycloak **não** é exposto publicamente: o browser fala com ele via nginx (`/realms`,
+`/resources`, `/.well-known`). Na VPS, troque o SAN/cert pelo IP/domínio público e mantenha
+`KEYCLOAK_HOSTNAME` igual à origem usada pelo browser.
 
 Todo o setup do banco (Compose + seed) que antes ficava no backend agora vive aqui.
 O `backend/` não tem mais `docker-compose.yml` nem `scripts/`.
@@ -66,9 +82,11 @@ responde `401`). Backend e frontend rodam na sua máquina (sem Docker), com hot-
 
 ```bash
 cd infra
-docker compose up -d postgres keycloak
+# Modo 1 não usa nginx: force o issuer HTTP direto do Keycloak (sobrepõe o .env,
+# que por padrão aponta para https://localhost via nginx).
+KEYCLOAK_HOSTNAME=http://localhost:8080 docker compose up -d postgres keycloak
 # auditoria-postgres — porta 5432 no host
-# auditoria-keycloak — porta 8080 no host (keycloak-db sobe por depends_on)
+# auditoria-keycloak — porta 8080 no host (127.0.0.1; db-init prepara o database no postgres)
 ```
 
 Com o postgres e o Keycloak de pé, rode a API e o web app em terminais separados:
@@ -88,7 +106,8 @@ npm run dev                        # http://localhost:3000
 > O `next.config.ts` do frontend tem proxy de dev `/api/*` → `http://localhost:8000/api/*`,
 > então **não há CORS** e o nginx não é necessário em dev.
 > O postgres local é alcançado em `localhost:5432` (variáveis do `backend/.env`); o Keycloak,
-> em `http://localhost:8080`.
+> em `http://localhost:8080`. Por isso o override `KEYCLOAK_HOSTNAME=...` acima é obrigatório:
+> `backend/.env` e `frontend/.env.local` esperam o issuer `http://localhost:8080`.
 
 ### Sync de credenciais
 
@@ -99,7 +118,7 @@ coincidir em `POSTGRES_USER`, `POSTGRES_PASSWORD` e `POSTGRES_DB`.
 
 ## 2 — Stack completa (produção)
 
-Sobe todos os serviços (postgres + keycloak-db + keycloak + api + web + nginx) — reproduz o
+Sobe todos os serviços (postgres + keycloak + api + web + nginx) — reproduz o
 ambiente de produção:
 
 ```bash
@@ -111,21 +130,28 @@ Acessos:
 
 | Recurso | URL |
 |-------------|---------|
-| Web app | http://localhost/ |
-| API (Swagger) | http://localhost/docs |
-| Health check | http://localhost/health |
-| Keycloak | http://localhost:8080/ |
+| Web app | https://localhost/ |
+| API (Swagger) | https://localhost/docs |
+| Health check | https://localhost/health |
+| Keycloak (via nginx) | https://localhost/realms/auditoria/ |
+| Keycloak admin (local) | http://127.0.0.1:8080/admin (túnel SSH na VPS) |
 
-> O Nginx é a única porta exposta além do postgres (5432) e do Keycloak (8080). Backend e
-> frontend ficam isolados na rede `app-network`.
+> O browser exibe um aviso de certificado autoassinado na primeira visita — aceite para continuar
+> (é um secure context, então o login/PKCE funciona). Em `curl`, use `-k`.
+> A porta 80 só redireciona para 443. Postgres e Keycloak escutam **apenas em `127.0.0.1`**;
+> backend e frontend ficam isolados na rede `app-network`.
+
+> **Trocar `KEYCLOAK_HOSTNAME` (ex.: domínio/IP na VPS)** muda o issuer/JWKS público e o
+> `NEXT_PUBLIC_KEYCLOAK_URL` → **rebuild do frontend** é obrigatório (`docker compose build nextjs`).
+> O cert em `certs/` precisa cobrir o mesmo host (SAN).
 
 ### Rotação
 
 ```bash
 docker compose up -d            # sobe usando imagens já construídas
 docker compose up -d --build    # sobe reconstruindo as imagens
-docker compose down             # derruba (mantém os volumes pgdata/keycloak-pgdata)
-docker compose down -v          # derruba e apaga os volumes (perde dados/seed e reimporta o realm)
+docker compose down             # derruba (mantém o volume pgdata)
+docker compose down -v          # derruba e apaga pgdata (perde dados/seed E o database do Keycloak)
 docker compose logs -f backend  # acompanhar logs
 docker compose logs -f keycloak # erros de import do realm aparecem aqui
 ```
@@ -136,14 +162,17 @@ docker compose logs -f keycloak # erros de import do realm aparecem aqui
 
 ```
 infra/
-├── docker-compose.yml   # orquestração (postgres, keycloak-db, keycloak, backend, nextjs, nginx)
+├── docker-compose.yml   # orquestração (postgres, db-init, keycloak, backend, nextjs, nginx)
 ├── nginx.conf           # proxy: / -> nextjs, /api/* -> backend, OIDC -> keycloak
+├── certs/               # TLS self-signed (fullchain.pem + privkey.pem) — gitignored
 ├── keycloak/
+│   ├── Dockerfile        # imagem do Keycloak (kc.sh build -> start --optimized)
 │   ├── realm-export.json # realm auditoria (bind read-only em /opt/keycloak/data/import)
 │   └── themes/
 │       └── auditoria/login/  # tema de login (dark) — parent=keycloak
 ├── scripts/
-│   └── init.sql         # seed do banco (executado na 1ª subida do postgres)
+│   ├── init.sql         # seed da aplicação (executado na 1ª subida do postgres)
+│   └── create-keycloak-db.sh  # cria role/database do Keycloak no Postgres único (idempotente)
 ├── .env                 # variáveis locais (não versionar)
 ├── .env.example         # modelo versionado
 └── README.md
@@ -231,16 +260,17 @@ ORDER BY a.created_at;
 | `POSTGRES_PASSWORD` | `{postgres-password}` | Senha do banco |
 | `POSTGRES_DB` | `auditoria` | Nome do banco |
 | `POSTGRES_HOST` | `postgres` | Host do banco visto de dentro da rede docker |
-| `POSTGRES_PORT` | `5432` | Porta do postgres exposta no host |
+| `POSTGRES_PORT` | `5432` | Porta do postgres exposta no host (bind `127.0.0.1`) |
 | `DEBUG` | `true` | Debug do backend |
-| `NGINX_PORT` | `80` | Porta do nginx no host |
-| `BACKEND_URL` | `http://backend:8000` | Destino do proxy `/api/*` |
-| `KEYCLOAK_PORT` | `8080` | Porta pública do Keycloak no host (acoplada a `KEYCLOAK_HOSTNAME` — ver [`AGENTS.md`](./AGENTS.md)) |
+| `NGINX_PORT` | `80` | Porta HTTP no host (só redireciona para HTTPS) |
+| `NGINX_TLS_PORT` | `443` | Porta HTTPS no host (TLS terminado no nginx) |
+| `BACKEND_URL` | `http://backend:8000` | Destino do proxy `/api/*` e `/health` |
+| `KEYCLOAK_PORT` | `8080` | Porta do Keycloak no host (bind `127.0.0.1`, só para admin/túnel — acoplada a `KEYCLOAK_HOSTNAME`) |
 | `KEYCLOAK_ADMIN` / `KEYCLOAK_ADMIN_PASSWORD` | `{keycloak-admin}` / `{keycloak-admin-password}` | Admin bootstrap (trocar em produção) |
 | `KEYCLOAK_DEV_USER` / `KEYCLOAK_DEV_USER_PASSWORD` | `{keycloak-dev-user}` / `{keycloak-dev-user-password}` | Usuário de teste do realm (dev-only); placeholders do `realm-export.json` |
-| `KEYCLOAK_DB_USER` / `KEYCLOAK_DB_PASSWORD` / `KEYCLOAK_DB` | `{keycloak-db-user}` / `{keycloak-db-password}` / `keycloak` | Banco dedicado do Keycloak |
+| `KEYCLOAK_DB_USER` / `KEYCLOAK_DB_PASSWORD` / `KEYCLOAK_DB` | `{keycloak-db-user}` / `{keycloak-db-password}` / `keycloak` | Database/role do Keycloak no Postgres único (criados pelo `db-init`) |
 | `KEYCLOAK_URL` | `http://keycloak:8080` | URL interna (nginx e JWKS do backend) |
-| `KEYCLOAK_HOSTNAME` | `http://localhost:8080` | Host público/issuer; **fonte única** — dele derivam `KEYCLOAK_ISSUER` (backend) e `NEXT_PUBLIC_KEYCLOAK_URL` (frontend) |
+| `KEYCLOAK_HOSTNAME` | `https://localhost` | Host público/issuer (browser→nginx); **fonte única** — dele derivam `KEYCLOAK_ISSUER` (backend) e `NEXT_PUBLIC_KEYCLOAK_URL` (frontend). Deve casar com o SAN do cert |
 | `NEXT_PUBLIC_KEYCLOAK_REALM` | `auditoria` | Realm do frontend (build arg) |
 | `NEXT_PUBLIC_KEYCLOAK_CLIENT_ID` | `auditoria-frontend` | Client OIDC do frontend (build arg) |
 
@@ -248,14 +278,24 @@ ORDER BY a.created_at;
 
 | Location | Destino | Notas |
 |--------------|-----------|------|
+| `:80` | — | `301` para `https://$host$request_uri` |
 | `/_next/static` | `nextjs:3000` | Cache `immutable`, expiry 1y |
 | `/api/*` | `$BACKEND_URL` | Proxy para a API (backend:8000) |
+| `/health` (exato) | `$BACKEND_URL` | Health público do backend (JSON) |
 | `/docs`, `/redoc`, `/openapi.json` | `$BACKEND_URL` | Documentação da API |
 | `~ ^/(realms\|resources\|js)/` | `$KEYCLOAK_URL` | OIDC + assets do Keycloak |
 | `~ ^/\.well-known/` | `$KEYCLOAK_URL` | Discovery OIDC |
 | `/` | `nextjs:3000` | Web app |
 
+Todas as locations enviam `X-Forwarded-Proto https` (o Keycloak usa isso para cookies/redirects).
+
 ## Solução de problemas
+
+- **Aviso de certificado / `SSL certificate problem`**: o cert é autoassinado (local). Aceite no
+  browser; em `curl` use `-k`. Se `docker compose` reclamar de cert ausente, gere `infra/certs/`
+  (ver *TLS* acima).
+- **Login redireciona para host errado**: `KEYCLOAK_HOSTNAME` precisa ser exatamente a origem
+  usada no browser (`https://localhost`) e o nginx precisa estar no ar.
 
 - **`Conflict. The container name "/auditoria-postgres" is already in use`**: container criado
   com o compose antigo (`backend/docker-compose.yml`). Remova: `docker rm -f auditoria-postgres`
